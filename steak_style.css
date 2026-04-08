@@ -1,0 +1,51 @@
+/* Notion dark mode background */
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #191919;
+  color: white;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+}
+
+/* Container */
+.container {
+  text-align: center;
+  padding: 20px;
+  border-radius: 20px;
+  background: #1f1f1f;
+  box-shadow: 0 0 10px rgba(0,0,0,0.5);
+  width: 300px;
+}
+
+/* Counter */
+#counter {
+  font-size: 70px;
+  margin: 20px 0;
+  transition: 0.3s;
+}
+
+/* Buttons */
+.buttons button {
+  margin: 5px;
+  padding: 10px 15px;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  background: #333;
+  color: white;
+}
+
+.buttons button:hover {
+  background: #555;
+}
+
+/* Status text */
+#status {
+  margin-top: 15px;
+  font-size: 14px;
+  opacity: 0.8;
+}
