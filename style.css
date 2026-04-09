@@ -2,20 +2,46 @@
 body {
   margin: 0;
   font-family: 'Poppins', sans-serif;
-  background: linear-gradient(135deg, #f093fb, #f5576c);
+  overflow: hidden;
+  background: linear-gradient(-45deg, #ff9a9e, #fad0c4, #a18cd1, #fbc2eb);
+  background-size: 400% 400%;
+  animation: gradientBG 15s ease infinite;
+  color: #fff;
   display: flex;
   justify-content: center;
   align-items: center;
   min-height: 100vh;
-  color: #fff;
 }
 
+/* Animate gradient */
+@keyframes gradientBG {
+  0% {background-position: 0% 50%;}
+  50% {background-position: 100% 50%;}
+  100% {background-position: 0% 50%;}
+}
+
+/* Floating emojis */
+.floating span {
+  position: absolute;
+  font-size: 24px;
+  animation: float 6s infinite ease-in-out;
+  opacity: 0.7;
+}
+@keyframes float {
+  0%, 100% {transform: translateY(0px);}
+  50% {transform: translateY(-20px);}
+}
+
+/* Container */
 .container {
   text-align: center;
   max-width: 1000px;
   padding: 20px;
+  z-index: 1;
+  position: relative;
 }
 
+/* Heading */
 h1 {
   font-size: 48px;
   margin-bottom: 40px;
@@ -31,12 +57,13 @@ h1 {
 
 /* Card styles */
 .card {
-  background: linear-gradient(145deg, #6a11cb, #2575fc);
+  background: linear-gradient(145deg, #ff6a00, #ee0979);
   border-radius: 20px;
   padding: 30px 20px;
   cursor: pointer;
   transition: transform 0.3s, box-shadow 0.3s;
   box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+  position: relative;
 }
 
 .card:hover {
@@ -52,4 +79,18 @@ h1 {
 .card p {
   font-size: 14px;
   opacity: 0.85;
+}
+
+/* Badge (for streak or notifications) */
+.badge {
+  position: absolute;
+  top: 10px;
+  right: 15px;
+  background: gold;
+  color: black;
+  padding: 5px 10px;
+  border-radius: 15px;
+  font-size: 12px;
+  font-weight: bold;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.3);
 }
