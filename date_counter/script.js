@@ -52,6 +52,10 @@ startBtn.addEventListener('click', () => {
   if(title==="") counterTitle.style.display="none";
   else { counterTitle.style.display="block"; counterTitle.textContent = title; }
 
+  // Dates
+  displayStart.textContent = startDate.toDateString();
+  displayEnd.textContent = endDate.toDateString();
+
   // Quote
   const quote = quoteInput.value.trim();
   if(quote==="") displayQuote.style.display="none";
