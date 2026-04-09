@@ -30,6 +30,14 @@ const progressContainer = document.querySelector(".progress-container");
 let countdownInterval;
 let milestones = [];
 
+// Helper: random pastel color
+function getRandomColor() {
+  const r = Math.floor(150 + Math.random()*100);
+  const g = Math.floor(150 + Math.random()*100);
+  const b = Math.floor(150 + Math.random()*100);
+  return `rgb(${r},${g},${b})`;
+}
+
 // Number animation
 function animateValue(element, value){
   element.classList.add("tick");
@@ -62,10 +70,8 @@ startBtn.addEventListener('click', () => {
   if(quote==="") displayQuote.style.display="none";
   else { displayQuote.style.display="block"; displayQuote.textContent = "“ "+quote+" ”"; }
 
-  // Render start/end flags
+  // Render flags
   renderStartEndFlags();
-
-  // Render milestones
   renderMilestones();
 
   // Start countdown
@@ -135,24 +141,27 @@ function updateCountdown(start,end){
 // --- Start/End Flags ---
 function renderStartEndFlags(){
   if(!progressContainer) return;
-  
-  // Remove old main flags first
+
   document.querySelectorAll(".flag-start, .flag-end").forEach(f=>f.remove());
 
   const mainStart = new Date(startInput.value);
   const mainEnd = new Date(endInput.value);
 
-  // Start flag
+  const totalDuration = mainEnd - mainStart;
+
+  // Calculate exact position for start (0% visually may not match inner bar start)
+  const startLeft = ((mainStart - mainStart)/totalDuration) * 100;
+  const endLeft = 100;
+
   const startFlag = document.createElement("div");
   startFlag.classList.add("flag","flag-start");
-  startFlag.style.left = "0%";
+  startFlag.style.left = startLeft + "%";
   startFlag.innerHTML = `<span class="flag-tooltip">Start: ${mainStart.toDateString()}</span>🚩`;
   progressContainer.appendChild(startFlag);
 
-  // End flag
   const endFlag = document.createElement("div");
   endFlag.classList.add("flag","flag-end");
-  endFlag.style.left = "100%";
+  endFlag.style.left = endLeft + "%";
   endFlag.innerHTML = `<span class="flag-tooltip">End: ${mainEnd.toDateString()}</span>🚩`;
   progressContainer.appendChild(endFlag);
 }
@@ -188,7 +197,8 @@ msSave.addEventListener("click", ()=>{
     return;
   }
 
-  milestones.push({title,start,end});
+  const color = getRandomColor();
+  milestones.push({title,start,end,color});
   modal.style.display="none";
   msTitle.value=""; msStart.value=""; msEnd.value="";
 
@@ -199,28 +209,33 @@ msSave.addEventListener("click", ()=>{
 function renderMilestones(){
   if(!progressContainer) return;
 
-  // Remove old milestone flags
   document.querySelectorAll(".ms-flag").forEach(f=>f.remove());
 
   const mainStart = new Date(startInput.value);
   const mainEnd = new Date(endInput.value);
   const totalDuration = mainEnd - mainStart;
 
-  milestones.forEach(ms => {
-    // Start flag
-    const startPerc = ((ms.start - mainStart) / totalDuration) * 100;
-    const startFlag = document.createElement("div");
-    startFlag.classList.add("flag","ms-flag");
-    startFlag.style.left = startPerc + "%";
-    startFlag.innerHTML = `<span class="flag-tooltip">${ms.title} Start: ${ms.start.toDateString()}</span>🚩`;
-    progressContainer.appendChild(startFlag);
+  // To handle overlapping, track offset per left %
+  const offsets = {};
 
-    // End flag
+  milestones.forEach(ms => {
+    // Helper to prevent exact overlap
+    const startPerc = ((ms.start - mainStart) / totalDuration) * 100;
     const endPerc = ((ms.end - mainStart) / totalDuration) * 100;
-    const endFlag = document.createElement("div");
-    endFlag.classList.add("flag","ms-flag");
-    endFlag.style.left = endPerc + "%";
-    endFlag.innerHTML = `<span class="flag-tooltip">${ms.title} End: ${ms.end.toDateString()}</span>🚩`;
-    progressContainer.appendChild(endFlag);
+
+    function createFlag(perc, label) {
+      const flag = document.createElement("div");
+      flag.classList.add("flag","ms-flag");
+      let topOffset = offsets[perc.toFixed(2)] || 0;
+      offsets[perc.toFixed(2)] = topOffset + 20; // next flag 20px below
+      flag.style.left = perc + "%";
+      flag.style.top = topOffset + "px";
+      flag.style.backgroundColor = ms.color;
+      flag.innerHTML = `<span class="flag-tooltip">${label}</span>🚩`;
+      progressContainer.appendChild(flag);
+    }
+
+    createFlag(startPerc, `${ms.title} Start: ${ms.start.toDateString()}`);
+    createFlag(endPerc, `${ms.title} End: ${ms.end.toDateString()}`);
   });
 }
