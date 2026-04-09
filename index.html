@@ -1,13 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>My Dashboard</title>
-  <link rel="stylesheet" href="style.css">
+<meta charset="UTF-8">
+<title>Widget Hub</title>
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-<!-- Floating shapes -->
 <div class="floating">
   <span>🌟</span>
   <span>🔥</span>
@@ -21,31 +20,28 @@
 </div>
 
 <div class="container">
-  <h1>My Widget Gallery</h1>
-  <div class="gallery">
-    <!-- Image Slider Card -->
-    <div class="card" onclick="goTo('image_slider/index.html')">
-      🎞
+  <h1>My Widget Hub</h1>
+
+  <div class="cards">
+
+    <div class="card" onclick="goTo(event, 'image_slider/index.html')">
+      <div class="icon">🎞</div>
       <h2>Image Slider</h2>
-      <p>View your GIF collection in style</p>
+      <p>View your favorite GIFs in a clean slider.</p>
     </div>
 
-    <!-- Streak Counter Card -->
-    <div class="card" onclick="goTo('streak/index.html')">
-      🔥
+    <div class="card" onclick="goTo(event, 'streak/index.html')">
+      <div class="icon">🔥</div>
       <h2>Streak Counter</h2>
-      <p>Track your daily progress</p>
-      <span class="badge" id="streak-badge">3 days</span>
+      <p>Track your daily consistency streak.</p>
     </div>
 
-    <!-- Date Counter Card -->
-    <div class="card" onclick="goTo('date_counter/index.html')">
-      <div class="icon">⌛</div>
+    <div class="card" onclick="goTo(event, 'date_counter/index.html')">
+      <div class="icon">⏳</div>
       <h2>Date Counter</h2>
-      <p>Track time between two dates with a live countdown.</p>
+      <p>Live countdown between two dates.</p>
     </div>
 
-    <!-- Add more cards here -->
   </div>
 </div>
 
