@@ -89,6 +89,83 @@ function updateCountdown(start,end){
     return;
   }
 
+  // Milestones
+const addMsBtn = document.getElementById("add-milestone-btn");
+const modal = document.getElementById("milestone-modal");
+const closeModal = document.querySelector(".modal .close");
+const msTitle = document.getElementById("ms-title");
+const msStart = document.getElementById("ms-start");
+const msEnd = document.getElementById("ms-end");
+const msSave = document.getElementById("ms-save");
+
+const progressContainer = document.querySelector(".progress-container");
+
+let milestones = [];
+
+// Open modal
+addMsBtn.addEventListener("click", () => modal.style.display="flex");
+// Close modal
+closeModal.addEventListener("click", () => modal.style.display="none");
+window.addEventListener("click", e => { if(e.target==modal) modal.style.display="none"; });
+
+// Save milestone
+msSave.addEventListener("click", ()=>{
+  const title = msTitle.value.trim();
+  const start = new Date(msStart.value);
+  const end = new Date(msEnd.value);
+
+  if(!title || isNaN(start) || isNaN(end)){
+    alert("Fill all fields correctly!");
+    return;
+  }
+
+  milestones.push({title,start,end});
+  modal.style.display="none";
+  msTitle.value=""; msStart.value=""; msEnd.value="";
+  renderMilestones();
+});
+
+// Render milestones
+function renderMilestones(){
+  // Remove old flags
+  document.querySelectorAll(".ms-flag").forEach(f=>f.remove());
+
+  const totalDuration = new Date(endInput.value) - new Date(startInput.value);
+
+  milestones.forEach(ms=>{
+    const msElapsed = ms.start - new Date(startInput.value);
+    let leftPercent = (msElapsed/totalDuration)*100;
+    leftPercent = Math.max(0,Math.min(100,leftPercent));
+
+    const flag = document.createElement("div");
+    flag.classList.add("flag","ms-flag");
+    flag.style.left = leftPercent+"%";
+    flag.innerHTML = `<span class="flag-tooltip">${ms.title}<br>${ms.start.toDateString()} - ${ms.end.toDateString()}</span>🏁`;
+    progressContainer.appendChild(flag);
+  });
+
+  // Start & end flags
+  if(!document.querySelector(".flag-start")){
+    const startFlag = document.createElement("div");
+    startFlag.classList.add("flag","flag-start");
+    startFlag.style.left = "0%";
+    startFlag.innerHTML = `<span class="flag-tooltip">Start: ${new Date(startInput.value).toDateString()}</span>🚩`;
+    progressContainer.appendChild(startFlag);
+  }
+  if(!document.querySelector(".flag-end")){
+    const endFlag = document.createElement("div");
+    endFlag.classList.add("flag","flag-end");
+    endFlag.style.left = "100%";
+    endFlag.innerHTML = `<span class="flag-tooltip">End: ${new Date(endInput.value).toDateString()}</span>🚩`;
+    progressContainer.appendChild(endFlag);
+  }
+}
+
+// Call render after countdown starts
+startBtn.addEventListener('click', ()=>{
+  renderMilestones();
+});
+
   const totalSeconds = Math.floor(diff/1000);
   const years = Math.floor(totalSeconds / (365*24*3600));
   const months = Math.floor((totalSeconds % (365*24*3600)) / (30*24*3600));
