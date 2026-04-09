@@ -1,0 +1,85 @@
+/* Dark Notion style */
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #191919;
+  color: white;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 20px;
+  min-height: 100vh;
+}
+
+.container {
+  max-width: 700px;
+  width: 100%;
+  text-align: center;
+  background: #1f1f1f;
+  border-radius: 20px;
+  padding: 30px;
+  box-sizing: border-box;
+}
+
+/* Inputs */
+input, textarea {
+  width: 80%;
+  padding: 10px;
+  margin: 10px 0;
+  border-radius: 10px;
+  border: none;
+  font-size: 16px;
+}
+
+button {
+  padding: 10px 20px;
+  margin-top: 15px;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  font-weight: bold;
+  background: #ff6a00;
+  color: white;
+  font-size: 16px;
+  transition: 0.3s;
+}
+
+button:hover {
+  background: #ee0979;
+}
+
+/* Countdown */
+#countdown {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 15px;
+  margin-top: 20px;
+}
+
+#countdown div {
+  background: #333;
+  padding: 15px;
+  border-radius: 15px;
+  min-width: 100px;
+}
+
+#countdown span {
+  font-size: 24px;
+  font-weight: bold;
+  display: block;
+}
+
+/* Dates display */
+.dates {
+  margin-top: 10px;
+  font-size: 14px;
+  opacity: 0.8;
+}
+
+/* Quote */
+#display-quote {
+  margin-top: 20px;
+  font-style: italic;
+  opacity: 0.9;
+}
