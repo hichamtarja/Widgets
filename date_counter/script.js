@@ -46,11 +46,27 @@ startBtn.addEventListener('click', () => {
   inputSection.style.display = "none";
   counterSection.style.display = "block";
 
-  // Set data
-  counterTitle.textContent = titleInput.value || "Countdown";
+  // 🎯 Title (OPTIONAL)
+  const title = titleInput.value.trim();
+  if (title === "") {
+    counterTitle.style.display = "none";
+  } else {
+    counterTitle.style.display = "block";
+    counterTitle.textContent = title;
+  }
+
+  // Dates
   displayStart.textContent = startDate.toDateString();
   displayEnd.textContent = endDate.toDateString();
-  displayQuote.textContent = quoteInput.value || "";
+
+  // 🎯 Quote (OPTIONAL + STYLED)
+  const quote = quoteInput.value.trim();
+  if (quote === "") {
+    displayQuote.style.display = "none";
+  } else {
+    displayQuote.style.display = "block";
+    displayQuote.textContent = "“ " + quote + " ”";
+  }
 
   // Start countdown
   updateCountdown(startDate, endDate);
@@ -64,8 +80,15 @@ startBtn.addEventListener('click', () => {
 // Reset Button
 resetBtn.addEventListener('click', () => {
   clearInterval(countdownInterval);
+
   inputSection.style.display = "block";
   counterSection.style.display = "none";
+
+  // Optional: clear inputs (clean UX)
+  titleInput.value = "";
+  startInput.value = "";
+  endInput.value = "";
+  quoteInput.value = "";
 });
 
 // Countdown Function
