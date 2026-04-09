@@ -9,6 +9,10 @@ if(streakBadge){
   let streakDays = 3; // this could be dynamically fetched from your streak widget in the future
   streakBadge.textContent = `${streakDays} days`;
 }
+/* Special color for Date Counter card */
+.card:nth-child(3):hover {
+  background: linear-gradient(135deg, #00c6ff, #0072ff);
+}
 
 // Floating emojis
 const floatingEmojis = document.querySelectorAll('.floating span');
