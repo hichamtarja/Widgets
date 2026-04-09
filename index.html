@@ -7,29 +7,34 @@
 </head>
 <body>
 
+<!-- Floating shapes -->
+<div class="floating">
+  <span>🌟</span>
+  <span>🔥</span>
+  <span>🎞</span>
+  <span>✨</span>
+  <span>💫</span>
+</div>
+
 <div class="container">
-  <h1>🌟 My Widget Gallery</h1>
+  <h1>My Widget Gallery</h1>
   <div class="gallery">
+    <!-- Image Slider Card -->
     <div class="card" onclick="goTo('image_slider/index.html')">
       🎞
       <h2>Image Slider</h2>
       <p>View your GIF collection in style</p>
     </div>
 
+    <!-- Streak Counter Card -->
     <div class="card" onclick="goTo('streak/index.html')">
       🔥
       <h2>Streak Counter</h2>
       <p>Track your daily progress</p>
+      <span class="badge" id="streak-badge">3 days</span>
     </div>
 
     <!-- Add more cards here -->
-    <!-- Example:
-    <div class="card" onclick="goTo('widget3/widget3.html')">
-      🧩
-      <h2>Widget 3</h2>
-      <p>Description</p>
-    </div>
-    -->
   </div>
 </div>
 
