@@ -27,7 +27,7 @@ let countdownInterval;
 
 // Start Button
 startBtn.addEventListener('click', () => {
-  console.log("Start button clicked"); // DEBUG
+  console.log("Start button clicked");
 
   const startDate = new Date(startInput.value);
   const endDate = new Date(endInput.value);
@@ -37,29 +37,28 @@ startBtn.addEventListener('click', () => {
     return;
   }
 
+  if (isNaN(startDate) || isNaN(endDate)) {
+    alert("Invalid dates!");
+    return;
+  }
+
+  // Switch view
   inputSection.style.display = "none";
   counterSection.style.display = "block";
 
+  // Set data
   counterTitle.textContent = titleInput.value || "Countdown";
   displayStart.textContent = startDate.toDateString();
   displayEnd.textContent = endDate.toDateString();
   displayQuote.textContent = quoteInput.value || "";
 
+  // Start countdown
   updateCountdown(startDate, endDate);
-  countdownInterval = setInterval(() => updateCountdown(startDate, endDate), 1000);
-});
 
-  // Show counter section
-  inputSection.style.display = "none";
-  counterSection.style.display = "block";
-
-  counterTitle.textContent = title;
-  displayStart.textContent = startDate.toDateString();
-  displayEnd.textContent = endDate.toDateString();
-  displayQuote.textContent = quote;
-
-  updateCountdown(startDate, endDate);
-  countdownInterval = setInterval(() => updateCountdown(startDate, endDate), 1000);
+  clearInterval(countdownInterval);
+  countdownInterval = setInterval(() => {
+    updateCountdown(startDate, endDate);
+  }, 1000);
 });
 
 // Reset Button
@@ -74,7 +73,10 @@ function updateCountdown(start, end) {
   const now = new Date();
   let diff = end - now;
 
-  if(diff < 0) diff = 0;
+  if (diff <= 0) {
+    diff = 0;
+    clearInterval(countdownInterval);
+  }
 
   const totalSeconds = Math.floor(diff / 1000);
 
