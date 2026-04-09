@@ -52,10 +52,6 @@ startBtn.addEventListener('click', () => {
   if(title==="") counterTitle.style.display="none";
   else { counterTitle.style.display="block"; counterTitle.textContent = title; }
 
-  // Dates
-  displayStart.textContent = startDate.toDateString();
-  displayEnd.textContent = endDate.toDateString();
-
   // Quote
   const quote = quoteInput.value.trim();
   if(quote==="") displayQuote.style.display="none";
@@ -66,6 +62,22 @@ startBtn.addEventListener('click', () => {
   clearInterval(countdownInterval);
   countdownInterval = setInterval(()=> updateCountdown(startDate,endDate),1000);
 });
+
+// Start & end flags
+  if(!document.querySelector(".flag-start")){
+    const startFlag = document.createElement("div");
+    startFlag.classList.add("flag","flag-start");
+    startFlag.style.left = "0%";
+    startFlag.innerHTML = `<span class="flag-tooltip">Start: ${new Date(startInput.value).toDateString()}</span>🚩`;
+    progressContainer.appendChild(startFlag);
+  }
+  if(!document.querySelector(".flag-end")){
+    const endFlag = document.createElement("div");
+    endFlag.classList.add("flag","flag-end");
+    endFlag.style.left = "100%";
+    endFlag.innerHTML = `<span class="flag-tooltip">End: ${new Date(endInput.value).toDateString()}</span>🚩`;
+    progressContainer.appendChild(endFlag);
+  }
 
 // Reset Button
 resetBtn.addEventListener('click', () => {
@@ -89,7 +101,39 @@ function updateCountdown(start,end){
     return;
   }
 
-  // Milestones
+  // --- MILESTONES ---
+function renderStartEndFlags(){
+  const prog = document.querySelector(".progress-container") || createProgressContainer();
+  
+  if(!document.querySelector(".flag-start")){
+    const startFlag = document.createElement("div");
+    startFlag.classList.add("flag","flag-start");
+    startFlag.style.left = "0%";
+    startFlag.innerHTML = `<span class="flag-tooltip">Start: ${new Date(startInput.value).toDateString()}</span>🚩`;
+    prog.appendChild(startFlag);
+  }
+  if(!document.querySelector(".flag-end")){
+    const endFlag = document.createElement("div");
+    endFlag.classList.add("flag","flag-end");
+    endFlag.style.left = "100%";
+    endFlag.innerHTML = `<span class="flag-tooltip">End: ${new Date(endInput.value).toDateString()}</span>🚩`;
+    prog.appendChild(endFlag);
+  }
+}
+
+function createProgressContainer(){
+  let container = document.createElement("div");
+  container.classList.add("progress-container");
+  container.style.position = "relative";
+  container.style.height = "30px";
+  container.style.marginTop = "20px";
+  container.style.background = "rgba(255,255,255,0.1)";
+  container.style.borderRadius = "10px";
+  container.style.overflow = "visible";
+  counterSection.appendChild(container);
+  return container;
+}
+
 const addMsBtn = document.getElementById("add-milestone-btn");
 const modal = document.getElementById("milestone-modal");
 const closeModal = document.querySelector(".modal .close");
@@ -98,71 +142,70 @@ const msStart = document.getElementById("ms-start");
 const msEnd = document.getElementById("ms-end");
 const msSave = document.getElementById("ms-save");
 
-const progressContainer = document.querySelector(".progress-container");
-
 let milestones = [];
 
 // Open modal
-addMsBtn.addEventListener("click", () => modal.style.display="flex");
-// Close modal
-closeModal.addEventListener("click", () => modal.style.display="none");
-window.addEventListener("click", e => { if(e.target==modal) modal.style.display="none"; });
+addMsBtn.addEventListener("click", ()=>modal.style.display="flex");
+closeModal.addEventListener("click", ()=>modal.style.display="none");
+window.addEventListener("click", e=>{if(e.target==modal) modal.style.display="none";});
 
 // Save milestone
 msSave.addEventListener("click", ()=>{
   const title = msTitle.value.trim();
   const start = new Date(msStart.value);
   const end = new Date(msEnd.value);
+  const mainStart = new Date(startInput.value);
+  const mainEnd = new Date(endInput.value);
 
-  if(!title || isNaN(start) || isNaN(end)){
+  if(!title || start.getTime()===NaN || end.getTime()===NaN){
     alert("Fill all fields correctly!");
+    return;
+  }
+  if(start<mainStart || end>mainEnd || start>end){
+    alert("Milestone must be within countdown start & end!");
     return;
   }
 
   milestones.push({title,start,end});
   modal.style.display="none";
   msTitle.value=""; msStart.value=""; msEnd.value="";
+
   renderMilestones();
 });
 
-// Render milestones
+// Render milestones as ribbons
 function renderMilestones(){
-  // Remove old flags
+  const prog = document.querySelector(".progress-container") || createProgressContainer();
+
+  // Remove old milestone ribbons
   document.querySelectorAll(".ms-flag").forEach(f=>f.remove());
 
-  const totalDuration = new Date(endInput.value) - new Date(startInput.value);
+  const mainStart = new Date(startInput.value);
+  const mainEnd = new Date(endInput.value);
+  const totalDuration = mainEnd - mainStart;
 
   milestones.forEach(ms=>{
-    const msElapsed = ms.start - new Date(startInput.value);
-    let leftPercent = (msElapsed/totalDuration)*100;
-    leftPercent = Math.max(0,Math.min(100,leftPercent));
+    const msStartPerc = ((ms.start - mainStart)/totalDuration)*100;
+    const msEndPerc = ((ms.end - mainStart)/totalDuration)*100;
 
-    const flag = document.createElement("div");
-    flag.classList.add("flag","ms-flag");
-    flag.style.left = leftPercent+"%";
-    flag.innerHTML = `<span class="flag-tooltip">${ms.title}<br>${ms.start.toDateString()} - ${ms.end.toDateString()}</span>🏁`;
-    progressContainer.appendChild(flag);
+    const ribbon = document.createElement("div");
+    ribbon.classList.add("ms-flag");
+    ribbon.style.position="absolute";
+    ribbon.style.left = msStartPerc + "%";
+    ribbon.style.width = (msEndPerc - msStartPerc) + "%";
+    ribbon.style.height = "20px";
+    ribbon.style.background = "linear-gradient(45deg,#ff6a00,#ee0979)";
+    ribbon.style.borderRadius = "5px";
+    ribbon.title = `${ms.title}\n${ms.start.toDateString()} - ${ms.end.toDateString()}`;
+
+    prog.appendChild(ribbon);
   });
 
-  // Start & end flags
-  if(!document.querySelector(".flag-start")){
-    const startFlag = document.createElement("div");
-    startFlag.classList.add("flag","flag-start");
-    startFlag.style.left = "0%";
-    startFlag.innerHTML = `<span class="flag-tooltip">Start: ${new Date(startInput.value).toDateString()}</span>🚩`;
-    progressContainer.appendChild(startFlag);
-  }
-  if(!document.querySelector(".flag-end")){
-    const endFlag = document.createElement("div");
-    endFlag.classList.add("flag","flag-end");
-    endFlag.style.left = "100%";
-    endFlag.innerHTML = `<span class="flag-tooltip">End: ${new Date(endInput.value).toDateString()}</span>🚩`;
-    progressContainer.appendChild(endFlag);
-  }
+  renderStartEndFlags();
 }
 
-// Call render after countdown starts
-startBtn.addEventListener('click', ()=>{
+// Ensure start/end flags render after countdown starts
+startBtn.addEventListener("click", ()=>{
   renderMilestones();
 });
 
