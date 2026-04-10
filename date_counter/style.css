@@ -190,3 +190,29 @@ button:hover { transform: scale(1.05); }
 /* Start & end flags */
 .flag-start { background: transparent; }
 .flag-end { background: transparent; }
+
+/* PIN STYLE */
+.ms-pin {
+  position: absolute;
+  transform: translateX(-50%);
+  cursor: pointer;
+}
+
+.pin-line {
+  width: 2px;
+  height: 15px;
+  background: white;
+  margin: auto;
+}
+
+.pin-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin: auto;
+}
+
+/* Runner animation */
+.runner {
+  transition: left 1s linear, transform 0.3s ease;
+}
