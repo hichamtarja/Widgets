@@ -28,6 +28,14 @@ const runner = document.querySelector('.runner');
 const progressContainer = document.querySelector('.progress-container');
 const countdownDisplay = document.getElementById('countdown');
 
+const addMsBtn = document.getElementById('add-milestone-btn');
+const modal = document.getElementById('milestone-modal');
+const closeModal = document.querySelector('.modal .close');
+const msTitle = document.getElementById('ms-title');
+const msStart = document.getElementById('ms-start');
+const msEnd = document.getElementById('ms-end');
+const msSave = document.getElementById('ms-save');
+
 let countdownInterval = null;
 let milestones = [];
 let showingMilestoneView = false;
@@ -76,6 +84,20 @@ function escapeHtml(text) {
   });
 }
 
+function injectRunnerAnimationStyle() {
+  if (document.getElementById('runner-anim-style')) return;
+
+  const style = document.createElement('style');
+  style.id = 'runner-anim-style';
+  style.textContent = `
+    @keyframes runnerBounce {
+      0% { transform: translateY(0px) rotate(-2deg); }
+      100% { transform: translateY(-4px) rotate(2deg); }
+    }
+  `;
+  document.head.appendChild(style);
+}
+
 function ensureMilestoneView() {
   let view = document.getElementById('milestone-view');
 
@@ -95,7 +117,6 @@ function ensureMilestoneView() {
     });
 
     view.addEventListener('click', toggleMilestoneView);
-
     countdownDisplay.insertAdjacentElement('beforebegin', view);
   }
 
@@ -124,20 +145,6 @@ function ensureDeadlineMessage() {
   }
 
   return msg;
-}
-
-function injectRunnerAnimationStyle() {
-  if (document.getElementById('runner-anim-style')) return;
-
-  const style = document.createElement('style');
-  style.id = 'runner-anim-style';
-  style.textContent = `
-    @keyframes runnerBounce {
-      0% { transform: translateY(0px) rotate(-2deg); }
-      100% { transform: translateY(-4px) rotate(2deg); }
-    }
-  `;
-  document.head.appendChild(style);
 }
 
 function renderStartEndFlags() {
@@ -231,9 +238,6 @@ function createMilestonePin(percent, ms, kind, stackCounts) {
   progressContainer.appendChild(pin);
 }
 
-  progressContainer.appendChild(dot);
-}
-
 function getNextMilestone(now = new Date()) {
   const upcoming = milestones
     .filter((ms) => ms.end > now)
@@ -288,40 +292,6 @@ function updateMilestoneView(now = new Date()) {
   `;
 }
 
-  const remaining = Math.max(0, next.start - now);
-  const parts = getTimeParts(remaining);
-
-  view.innerHTML = `
-    <div style="font-size:14px;opacity:.75;margin-bottom:8px;">Next milestone</div>
-    <div style="font-size:22px;font-weight:800;margin-bottom:10px;">${escapeHtml(next.title)}</div>
-    <div style="display:flex;justify-content:center;flex-wrap:wrap;gap:10px;margin-bottom:12px;">
-      <div style="min-width:74px;padding:10px 12px;border-radius:14px;background:rgba(255,255,255,0.06);">
-        <div style="font-size:22px;font-weight:800;">${parts.years}</div><div style="font-size:12px;opacity:.8;">Years</div>
-      </div>
-      <div style="min-width:74px;padding:10px 12px;border-radius:14px;background:rgba(255,255,255,0.06);">
-        <div style="font-size:22px;font-weight:800;">${parts.months}</div><div style="font-size:12px;opacity:.8;">Months</div>
-      </div>
-      <div style="min-width:74px;padding:10px 12px;border-radius:14px;background:rgba(255,255,255,0.06);">
-        <div style="font-size:22px;font-weight:800;">${parts.weeks}</div><div style="font-size:12px;opacity:.8;">Weeks</div>
-      </div>
-      <div style="min-width:74px;padding:10px 12px;border-radius:14px;background:rgba(255,255,255,0.06);">
-        <div style="font-size:22px;font-weight:800;">${parts.days}</div><div style="font-size:12px;opacity:.8;">Days</div>
-      </div>
-      <div style="min-width:74px;padding:10px 12px;border-radius:14px;background:rgba(255,255,255,0.06);">
-        <div style="font-size:22px;font-weight:800;">${parts.hours}</div><div style="font-size:12px;opacity:.8;">Hours</div>
-      </div>
-      <div style="min-width:74px;padding:10px 12px;border-radius:14px;background:rgba(255,255,255,0.06);">
-        <div style="font-size:22px;font-weight:800;">${parts.minutes}</div><div style="font-size:12px;opacity:.8;">Minutes</div>
-      </div>
-      <div style="min-width:74px;padding:10px 12px;border-radius:14px;background:rgba(255,255,255,0.06);">
-        <div style="font-size:22px;font-weight:800;">${parts.seconds}</div><div style="font-size:12px;opacity:.8;">Seconds</div>
-      </div>
-    </div>
-    <div style="font-size:13px;opacity:.75;">${next.start.toDateString()} → ${next.end.toDateString()}</div>
-    <div style="margin-top:8px;font-size:12px;opacity:.65;">Tap again to go back.</div>
-  `;
-}
-
 function toggleMilestoneView() {
   if (!milestones.length) return;
 
@@ -329,7 +299,6 @@ function toggleMilestoneView() {
   if (!next) return;
 
   const view = ensureMilestoneView();
-
   showingMilestoneView = !showingMilestoneView;
 
   if (showingMilestoneView) {
@@ -339,6 +308,59 @@ function toggleMilestoneView() {
   } else {
     view.style.display = 'none';
     countdownDisplay.style.display = 'flex';
+  }
+}
+
+function updateCountdown(start, end) {
+  const now = new Date();
+  let diff = end - now;
+
+  const deadlineMessage = ensureDeadlineMessage();
+
+  if (diff <= 0) {
+    diff = 0;
+    clearInterval(countdownInterval);
+
+    deadlineMessage.textContent = "⏳ Time's Up!";
+    deadlineMessage.style.display = 'block';
+    countdownDisplay.style.opacity = '0.35';
+    progressFill.style.width = '100%';
+    runner.style.left = '100%';
+    runner.style.animation = 'runnerBounce 0.7s ease-in-out infinite alternate';
+    return;
+  }
+
+  deadlineMessage.style.display = 'none';
+  countdownDisplay.style.opacity = '1';
+
+  const { years, months, weeks, days, hours, minutes, seconds } = getTimeParts(diff);
+
+  animateValue(yearsSpan, years);
+  animateValue(monthsSpan, months);
+  animateValue(weeksSpan, weeks);
+  animateValue(daysSpan, days);
+  animateValue(hoursSpan, hours);
+  animateValue(minutesSpan, minutes);
+  animateValue(secondsSpan, seconds);
+
+  if (diff < 86400000) {
+    document.querySelectorAll('#countdown div').forEach((d) => d.classList.add('danger'));
+  } else {
+    document.querySelectorAll('#countdown div').forEach((d) => d.classList.remove('danger'));
+  }
+
+  const totalDuration = end - start;
+  const elapsed = now - start;
+
+  let progress = (elapsed / totalDuration) * 100;
+  progress = Math.max(0, Math.min(100, progress));
+
+  progressFill.style.width = progress + '%';
+  runner.style.left = progress + '%';
+  runner.style.animation = 'runnerBounce 0.7s ease-in-out infinite alternate';
+
+  if (showingMilestoneView) {
+    updateMilestoneView(now);
   }
 }
 
@@ -371,7 +393,6 @@ startBtn.addEventListener('click', () => {
   countdownDisplay.style.display = 'flex';
   countdownDisplay.style.opacity = '1';
 
-  // Title (optional)
   const title = titleInput.value.trim();
   if (title === '') {
     counterTitle.style.display = 'none';
@@ -380,11 +401,9 @@ startBtn.addEventListener('click', () => {
     counterTitle.textContent = title;
   }
 
-  // Dates
   displayStart.textContent = startDate.toDateString();
   displayEnd.textContent = endDate.toDateString();
 
-  // Quote (optional)
   const quote = quoteInput.value.trim();
   if (quote === '') {
     displayQuote.style.display = 'none';
@@ -419,7 +438,7 @@ resetBtn.addEventListener('click', () => {
   milestones = [];
   showingMilestoneView = false;
 
-  document.querySelectorAll('.flag-start, .flag-end, .ms-dot').forEach((el) => el.remove());
+  document.querySelectorAll('.flag-start, .flag-end, .ms-pin').forEach((el) => el.remove());
 
   const milestoneView = document.getElementById('milestone-view');
   if (milestoneView) {
@@ -437,71 +456,7 @@ resetBtn.addEventListener('click', () => {
   countdownDisplay.style.opacity = '1';
 });
 
-// Countdown Function
-function updateCountdown(start, end) {
-  const now = new Date();
-  let diff = end - now;
-
-  const deadlineMessage = ensureDeadlineMessage();
-
-  if (diff <= 0) {
-    diff = 0;
-    clearInterval(countdownInterval);
-
-    deadlineMessage.textContent = "⏳ Time's Up!";
-    deadlineMessage.style.display = 'block';
-    countdownDisplay.style.opacity = '0.35';
-    progressFill.style.width = '100%';
-    runner.style.left = '100%';
-    runner.style.animation = 'runnerBounce 0.7s ease-in-out infinite alternate';
-    return;
-  }
-
-  deadlineMessage.style.display = 'none';
-  countdownDisplay.style.opacity = '1';
-
-  const { years, months, weeks, days, hours, minutes, seconds } = getTimeParts(diff);
-
-  animateValue(yearsSpan, years);
-  animateValue(monthsSpan, months);
-  animateValue(weeksSpan, weeks);
-  animateValue(daysSpan, days);
-  animateValue(hoursSpan, hours);
-  animateValue(minutesSpan, minutes);
-  animateValue(secondsSpan, seconds);
-
-  // Glow panels if less than 1 day remains
-  if (diff < 86400000) {
-    document.querySelectorAll('#countdown div').forEach((d) => d.classList.add('danger'));
-  } else {
-    document.querySelectorAll('#countdown div').forEach((d) => d.classList.remove('danger'));
-  }
-
-  // Progress bar & runner
-  const totalDuration = end - start;
-  const elapsed = now - start;
-
-  let progress = (elapsed / totalDuration) * 100;
-  progress = Math.max(0, Math.min(100, progress));
-
-  progressFill.style.width = progress + '%';
-  runner.style.left = progress + '%';
-  runner.style.animation = 'runnerBounce 0.7s ease-in-out infinite alternate';
-
-  if (showingMilestoneView) {
-    updateMilestoneView(now);
-  }
-}
-
 // Milestone modal
-const addMsBtn = document.getElementById('add-milestone-btn');
-const modal = document.getElementById('milestone-modal');
-const closeModal = document.querySelector('.modal .close');
-const msTitle = document.getElementById('ms-title');
-const msStart = document.getElementById('ms-start');
-const msEnd = document.getElementById('ms-end');
-const msSave = document.getElementById('ms-save');
-
 if (addMsBtn && modal && closeModal && msTitle && msStart && msEnd && msSave) {
   addMsBtn.addEventListener('click', () => {
     modal.style.display = 'flex';
@@ -532,13 +487,11 @@ if (addMsBtn && modal && closeModal && msTitle && msStart && msEnd && msSave) {
       return;
     }
 
-    const colors = getRandomMilestonePalette();
-
     milestones.push({
       title,
       start,
       end,
-      colors
+      colors: getRandomMilestonePalette()
     });
 
     modal.style.display = 'none';
@@ -548,7 +501,6 @@ if (addMsBtn && modal && closeModal && msTitle && msStart && msEnd && msSave) {
 
     renderMilestones();
 
-    // If the user is currently looking at the milestone view, refresh it.
     if (showingMilestoneView) {
       updateMilestoneView(new Date());
     }
