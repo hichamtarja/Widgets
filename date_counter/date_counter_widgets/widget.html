@@ -1,74 +1,64 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>Date Counter Widget</title>
-<link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8">
+  <title>Date Counter Widget</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <a href="../index.html" class="back-btn" title="Back to widgets">←</a>
 
-<a href="../index.html" class="back-btn">←</a>
+  <div class="container">
+    <div id="input-section">
+      <h1 id="counter-title">Date Counter</h1>
 
-<div class="container">
+      <input type="text" id="title" placeholder="Enter title...">
+      <input type="date" id="start-date">
+      <input type="date" id="end-date">
+      <textarea id="quote" placeholder="Enter quote..."></textarea>
 
-<!-- INPUT SECTION -->
-<div id="input-section">
-  <h1 id="counter-title">Date Counter</h1>
-  
-  <input type="text" id="title" placeholder="Enter title...">
-  <input type="date" id="start-date">
-  <input type="date" id="end-date">
+      <button id="start-btn" type="button">Start Counter</button>
+    </div>
 
-  <textarea id="quote" placeholder="Enter quote..."></textarea>
+    <div id="counter-section" style="display:none;">
+      <h1 id="display-title"></h1>
 
-  <button id="start-btn">Start Counter</button>
-</div>
+      <div class="dates">
+        <p>Start: <span id="display-start"></span></p>
+        <p>End: <span id="display-end"></span></p>
+      </div>
 
-<!-- COUNTER SECTION -->
-<div id="counter-section" style="display:none;">
+      <div class="progress-container">
+        <img src="runner.gif" class="runner" id="runner" alt="runner">
+        <div class="progress-bar">
+          <div class="progress-fill" id="progress-fill"></div>
+        </div>
+      </div>
 
-  <h1 id="display-title"></h1>
+      <div class="controls">
+        <button id="add-milestone-btn">+ Milestone</button>
+        <button id="view-milestones-btn">View Milestones</button>
+        <button id="toggle-tools-btn">Hide Tools</button>
+      </div>
 
-  <div class="dates">
-    <p>Start: <span id="display-start"></span></p>
-    <p>End: <span id="display-end"></span></p>
-  </div>
+      <div id="countdown"></div>
 
-  <!-- PROGRESS -->
-  <div class="progress-container">
-    <img src="runner.gif" class="runner" id="runner">
-    <div class="progress-bar">
-      <div class="progress-fill" id="progress-fill"></div>
+      <p id="display-quote"></p>
+      <button id="reset-btn">Reset</button>
     </div>
   </div>
 
-  <!-- CONTROLS (we will enhance in next step) -->
-  <div class="controls">
-    <button id="add-milestone-btn">+ Milestone</button>
-    <button id="view-milestones-btn">View Milestones</button>
-    <button id="toggle-tools-btn">Hide Tools</button>
-  </div>
-
-  <div class="modal" id="milestone-modal">
+  <div id="milestone-modal" class="modal">
     <div class="modal-content">
       <span class="close">&times;</span>
-      <h3>New Milestone</h3>
-      <input type="text" id="ms-title" placeholder="Title">
+      <h2>Add Milestone</h2>
+      <input type="text" id="ms-title" placeholder="Milestone Title">
       <input type="date" id="ms-start">
       <input type="date" id="ms-end">
-      <button id="ms-save">Save</button>
+      <button id="ms-save">Save Milestone</button>
     </div>
   </div>
 
-  <!-- COUNTER -->
-  <div id="countdown"></div>
-
-  <p id="display-quote"></p>
-
-</div>
-
-</div>
-
-<script src="script.js"></script>
+  <script src="script.js"></script>
 </body>
 </html>
