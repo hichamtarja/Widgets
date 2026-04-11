@@ -147,7 +147,7 @@ saveWidgets(widgets);
 render();
 
 /* open immediately */
-window.location.href = `widget.html?id=${newWidget.id}`;
+window.location.href = `date_counter_widgets/widget.html?id=${newWidget.id}`;
 });
 
 render();
