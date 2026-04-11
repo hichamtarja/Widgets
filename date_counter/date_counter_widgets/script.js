@@ -113,15 +113,15 @@ function animateValue(element, value) {
 function getTimeParts(totalMilliseconds) {
   const totalSeconds = Math.max(0, Math.floor(totalMilliseconds / 1000));
 
-  const years = Math.floor(totalSeconds / (365 * 24 * 3600));
-  const months = Math.floor((totalSeconds % (365 * 24 * 3600)) / (30 * 24 * 3600));
-  const weeks = Math.floor((totalSeconds % (30 * 24 * 3600)) / (7 * 24 * 3600));
-  const days = Math.floor((totalSeconds % (7 * 24 * 3600)) / (24 * 3600));
-  const hours = Math.floor((totalSeconds % (24 * 3600)) / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
-
-  return { years, months, weeks, days, hours, minutes, seconds };
+  return {
+    years: Math.floor(totalSeconds / (365 * 24 * 3600)),
+    months: Math.floor((totalSeconds % (365 * 24 * 3600)) / (30 * 24 * 3600)),
+    weeks: Math.floor((totalSeconds % (30 * 24 * 3600)) / (7 * 24 * 3600)),
+    days: Math.floor((totalSeconds % (7 * 24 * 3600)) / (24 * 3600)),
+    hours: Math.floor((totalSeconds % (24 * 3600)) / 3600),
+    minutes: Math.floor((totalSeconds % 3600) / 60),
+    seconds: totalSeconds % 60
+  };
 }
 
 function getRandomMilestonePalette() {
@@ -294,11 +294,12 @@ function createMilestonePin(percent, ms, kind, stackCounts) {
   });
 
   const dotColor = kind === 'start' ? ms.colors.start : ms.colors.end;
+  const labelDate = kind === 'start' ? ms.start.toDateString() : ms.end.toDateString();
 
   pin.innerHTML = `
     <div class="pin-line" style="background:${dotColor}"></div>
     <div class="pin-dot" style="background:${dotColor}; box-shadow: 0 0 12px ${dotColor};"></div>
-    <span class="flag-tooltip">${kind === 'start' ? ms.title + ' Start' : ms.title + ' End'}</span>
+    <span class="flag-tooltip">${kind === 'start' ? ms.title + ' Start' : ms.title + ' End'} • ${labelDate}</span>
   `;
 
   progressContainer.appendChild(pin);
