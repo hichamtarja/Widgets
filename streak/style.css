@@ -37,6 +37,19 @@ h1 {
   margin-bottom: 24px;
 }
 
+.home-btn {
+  position: absolute;
+  top: 15px;
+  left: 15px;
+  text-decoration: none;
+  color: #aaa;
+  font-size: 14px;
+}
+
+.home-btn:hover {
+  color: white;
+}
+
 .widget-list {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
