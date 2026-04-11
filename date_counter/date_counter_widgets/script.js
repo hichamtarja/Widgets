@@ -529,8 +529,8 @@ function showMilestoneList() {
 }
 
 function startCounter() {
-  const startDate = new Date(startInput.value);
-  const endDate = new Date(endInput.value);
+   const startDate = new Date(startInput.value + "T00:00:00");
+   const endDate = new Date(endInput.value + "T23:59:59");
 
   if (!startInput.value || !endInput.value) {
     alert('Please enter dates!');
