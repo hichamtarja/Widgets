@@ -29,7 +29,14 @@
 
     <!-- Progress bar with running man -->
     <div class="progress-container">
-      <div class="runner">🏃</div>
+      <div class="runner" aria-hidden="true">
+        <span class="runner-head"></span>
+        <span class="runner-body"></span>
+        <span class="runner-arm front"></span>
+        <span class="runner-arm back"></span>
+        <span class="runner-leg front"></span>
+        <span class="runner-leg back"></span>
+      </div>
       <div class="progress-bar">
         <div class="progress-fill" id="progress-fill"></div>
       </div>
