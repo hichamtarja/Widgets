@@ -50,6 +50,15 @@ function getStatusText(count) {
   return { text: "LEGEND STATUS 👑", color: "#ffd700" };
 }
 
+function updateWidgetTitle(id, newTitle) {
+  const widgets = getWidgetList();
+  const widget = widgets.find((w) => w.id === id);
+  if (!widget) return;
+
+  widget.title = newTitle;
+  saveWidgetList(widgets);
+}
+
 /* Dashboard page */
 const widgetListEl = document.getElementById("widget-list");
 const createBtn = document.getElementById("create-widget-btn");
@@ -70,13 +79,17 @@ if (widgetListEl && createBtn) {
     }
 
     widgets.forEach((widget) => {
+      const count = getCount(widget.id);
+
       const card = document.createElement("div");
       card.className = "widget-card";
       card.innerHTML = `
         <h3>🔥 ${widget.title}</h3>
-        <p>Click to open this widget.</p>
+        <p>Current streak: ${count}</p>
         <div class="widget-actions">
           <button class="small-btn" data-open="${widget.id}">Open</button>
+          <button class="small-btn" data-edit="${widget.id}">Edit</button>
+          <button class="small-btn" data-delete="${widget.id}">Delete</button>
         </div>
       `;
       widgetListEl.appendChild(card);
@@ -88,6 +101,37 @@ if (widgetListEl && createBtn) {
         window.location.href = `widget.html?id=${encodeURIComponent(id)}`;
       });
     });
+
+    widgetListEl.querySelectorAll("[data-edit]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-edit");
+        const widgets = getWidgetList();
+        const widget = widgets.find((w) => w.id === id);
+        if (!widget) return;
+
+        const newTitle = prompt("Edit widget name:", widget.title);
+        if (!newTitle || !newTitle.trim()) return;
+
+        widget.title = newTitle.trim();
+        saveWidgetList(widgets);
+        renderDashboard();
+      });
+    });
+
+    widgetListEl.querySelectorAll("[data-delete]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-delete");
+
+        if (!confirm("Delete this widget?")) return;
+
+        let widgets = getWidgetList();
+        widgets = widgets.filter((w) => w.id !== id);
+
+        localStorage.removeItem(getCountKey(id));
+        saveWidgetList(widgets);
+        renderDashboard();
+      });
+    });
   }
 
   createBtn.addEventListener("click", () => {
@@ -97,9 +141,12 @@ if (widgetListEl && createBtn) {
     const widgets = getWidgetList();
     const id = makeId(title);
 
-    widgets.push({ id, title: title.trim() });
-    saveWidgetList(widgets);
+    widgets.push({
+      id,
+      title: title.trim(),
+    });
 
+    saveWidgetList(widgets);
     renderDashboard();
     window.location.href = `widget.html?id=${encodeURIComponent(id)}`;
   });
@@ -116,6 +163,7 @@ if (counterEl && statusEl && widgetTitleEl) {
   const widgetId = getWidgetIdFromUrl();
 
   if (!widgetId) {
+    widgetTitleEl.textContent = "🔥 Streak";
     statusEl.textContent = "No widget selected.";
     counterEl.textContent = "—";
   } else {
@@ -124,6 +172,19 @@ if (counterEl && statusEl && widgetTitleEl) {
 
     if (widget) {
       widgetTitleEl.textContent = `🔥 ${widget.title}`;
+
+      widgetTitleEl.addEventListener("click", () => {
+        const widgetsNow = getWidgetList();
+        const currentWidget = widgetsNow.find((w) => w.id === widgetId);
+        if (!currentWidget) return;
+
+        const newTitle = prompt("Edit widget title:", currentWidget.title);
+        if (!newTitle || !newTitle.trim()) return;
+
+        currentWidget.title = newTitle.trim();
+        saveWidgetList(widgetsNow);
+        widgetTitleEl.textContent = `🔥 ${currentWidget.title}`;
+      });
     } else {
       widgetTitleEl.textContent = "🔥 Streak";
     }
