@@ -357,6 +357,7 @@ function updateCountdown(start, end) {
 
   progressFill.style.width = progress + '%';
   runner.style.left = progress + '%';
+  runner.style.transition = 'left 0.8s linear';
   runner.style.animation = 'runnerBounce 0.7s ease-in-out infinite alternate';
 
   if (showingMilestoneView) {
