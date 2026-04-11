@@ -149,3 +149,7 @@ button:hover {
   border-radius: 15px;
   width: 300px;
 }
+
+textarea {
+  resize: none;
+}
