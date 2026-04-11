@@ -246,13 +246,26 @@ button:hover {
   font-size: 20px;
 }
 
+/* ---------- FIXED FLAG STYLES ---------- */
 .flag {
   position: absolute;
-  top: -14px;
+  top: -20px;          /* Move flag above progress bar */
   width: 0;
   height: 0;
+  z-index: 30;         /* Ensure above runner */
+  pointer-events: none;
   cursor: pointer;
-  z-index: 20;
+}
+
+.flag-anchor {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform: translate(-50%, -50%);  /* Center the flag exactly on the percentage point */
+  font-size: 20px;
+  line-height: 1;
+  filter: drop-shadow(0 0 4px rgba(0,0,0,0.5));
+  pointer-events: auto;  /* Allow hover for tooltip */
 }
 
 .flag-start {
@@ -262,15 +275,6 @@ button:hover {
 .flag-end {
   left: 100%;
   transform: translateX(-100%);
-}
-
-.flag-anchor {
-  position: absolute;
-  left: 0;
-  top: 0;
-  transform: translate(-20%, -47%);
-  font-size: 18px;
-  line-height: 5;
 }
 
 .flag-tooltip {
