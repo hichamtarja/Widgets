@@ -14,8 +14,6 @@ const quoteInput = document.getElementById('quote');
 
 const counterTitle = document.getElementById('counter-title');
 const displayTitle = document.getElementById('display-title');
-const displayStart = document.getElementById('display-start');
-const displayEnd = document.getElementById('display-end');
 const displayQuote = document.getElementById('display-quote');
 
 const yearsSpan = document.getElementById('years');
@@ -46,6 +44,7 @@ let countdownInterval = null;
 let milestones = [];
 let showingMilestoneView = false;
 
+// ---------- Local Storage Helpers ----------
 function getWidgets() {
   try {
     return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
@@ -104,6 +103,7 @@ function deserializeMilestones(list) {
   }));
 }
 
+// ---------- UI Helpers ----------
 function animateValue(element, value) {
   element.classList.add('tick');
   setTimeout(() => element.classList.remove('tick'), 300);
@@ -227,9 +227,11 @@ function bindEditableQuote() {
   };
 }
 
+// ---------- FIXED: Flag rendering with proper centering ----------
 function renderStartEndFlags() {
   if (!progressContainer) return;
 
+  // Remove existing flags
   document.querySelectorAll('.flag-start, .flag-end').forEach(el => el.remove());
 
   const mainStart = new Date(startInput.value);
@@ -237,16 +239,20 @@ function renderStartEndFlags() {
 
   const startFlag = document.createElement('div');
   startFlag.className = 'flag flag-start';
+  startFlag.style.pointerEvents = 'auto';
+  startFlag.style.cursor = 'pointer';
   startFlag.innerHTML = `
-    <span class="flag-anchor">🚩</span>
+    <span class="flag-anchor" style="font-size:20px; line-height:1;">🚩</span>
     <span class="flag-tooltip">Start: ${mainStart.toDateString()}</span>
   `;
   progressContainer.appendChild(startFlag);
 
   const endFlag = document.createElement('div');
   endFlag.className = 'flag flag-end';
+  endFlag.style.pointerEvents = 'auto';
+  endFlag.style.cursor = 'pointer';
   endFlag.innerHTML = `
-    <span class="flag-anchor">🚩</span>
+    <span class="flag-anchor" style="font-size:20px; line-height:1;">🚩</span>
     <span class="flag-tooltip">End: ${mainEnd.toDateString()}</span>
   `;
   progressContainer.appendChild(endFlag);
@@ -576,9 +582,6 @@ function startCounter() {
     displayQuote.dataset.raw = quote;
   }
 
-  displayStart.textContent = startDate.toDateString();
-  displayEnd.textContent = endDate.toDateString();
-
   bindEditableTitle();
   bindEditableQuote();
 
@@ -598,6 +601,7 @@ function startCounter() {
   }, 1000);
 }
 
+// ---------- FIXED: Reset without destroying countdown structure ----------
 function resetCounter() {
   clearInterval(countdownInterval);
 
@@ -634,9 +638,17 @@ function resetCounter() {
     deadlineMessage.innerHTML = '';
   }
 
+  // Reset countdown values (keep DOM references alive)
+  yearsSpan.textContent = '0';
+  monthsSpan.textContent = '0';
+  weeksSpan.textContent = '0';
+  daysSpan.textContent = '0';
+  hoursSpan.textContent = '0';
+  minutesSpan.textContent = '0';
+  secondsSpan.textContent = '0';
+
   progressFill.style.width = '0%';
   runner.style.left = '0%';
-  countdownDisplay.innerHTML = '';
 
   saveCurrentState();
 }
@@ -662,9 +674,11 @@ function initFromSavedWidget() {
   }
 }
 
+// ---------- Initialization ----------
 injectRunnerAnimationStyle();
 initFromSavedWidget();
 
+// ---------- Event Listeners ----------
 startBtn.addEventListener('click', startCounter);
 
 if (resetBtn) {
