@@ -10,7 +10,7 @@
 
   <div class="container">
     <div id="input-section">
-      <h1>Date Counter Streak</h1>
+      <h1 id="counter-title">Date Counter Streak</h1>
 
       <input type="text" id="title" placeholder="Enter Title">
       <input type="date" id="start-date">
@@ -24,12 +24,15 @@
       <h1 id="display-title"></h1>
 
       <div class="counter-panel">
-        <div id="countdown"></div>
-      </div>
-
-      <div class="dates">
-        <p>Start: <span id="display-start"></span></p>
-        <p>End: <span id="display-end"></span></p>
+        <div id="countdown">
+          <div><span id="years">0</span> Years</div>
+          <div><span id="months">0</span> Months</div>
+          <div><span id="weeks">0</span> Weeks</div>
+          <div><span id="days">0</span> Days</div>
+          <div><span id="hours">0</span> Hours</div>
+          <div><span id="minutes">0</span> Minutes</div>
+          <div><span id="seconds">0</span> Seconds</div>
+        </div>
       </div>
 
       <div class="progress-container">
