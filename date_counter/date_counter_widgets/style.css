@@ -21,13 +21,15 @@ body {
   position: relative;
 }
 
-.back-btn {
+.back-btn,
+.back-btn:visited {
   position: absolute;
   top: 15px;
   left: 15px;
   color: #aaa;
   text-decoration: none;
-  font-size: 18px;
+  font-size: 24px;
+  line-height: 1;
   z-index: 50;
 }
 
@@ -71,12 +73,12 @@ button:hover {
   transform: scale(1.05);
 }
 
-#counter-title,
-#display-title {
-  margin-bottom: 10px;
+#counter-title {
+  margin-bottom: 16px;
 }
 
 #display-title {
+  margin-bottom: 16px;
   cursor: pointer;
 }
 
@@ -85,10 +87,13 @@ button:hover {
   opacity: 0.8;
 }
 
-.dates {
-  margin-top: 10px;
-  font-size: 13px;
-  opacity: 0.7;
+.counter-panel {
+  width: 100%;
+  margin: 0 auto 18px;
+  padding: 12px 10px 8px;
+  border-radius: 18px;
+  background: rgba(255,255,255,0.03);
+  min-height: 110px;
 }
 
 #countdown {
@@ -96,7 +101,6 @@ button:hover {
   justify-content: center;
   gap: 10px;
   flex-wrap: wrap;
-  margin-top: 30px;
 }
 
 #countdown div {
@@ -140,6 +144,12 @@ button:hover {
   100% { box-shadow: 0 0 5px red; }
 }
 
+.dates {
+  margin-top: 14px;
+  font-size: 13px;
+  opacity: 0.7;
+}
+
 #display-quote {
   margin-top: 25px;
   font-style: italic;
@@ -154,6 +164,7 @@ button:hover {
   margin-top: 20px;
   position: relative;
   height: 30px;
+  width: 100%;
   overflow: visible;
 }
 
@@ -175,9 +186,10 @@ button:hover {
 .runner {
   position: absolute;
   top: -23px;
+  left: 0%;
   width: 31px;
   height: auto;
-  transform: translateX(-50%);
+  transform: none;
   pointer-events: none;
   transition: left 1s linear;
 }
@@ -193,6 +205,17 @@ button:hover {
 .controls button {
   padding: 10px 16px;
   font-size: 14px;
+}
+
+#start-btn {
+  display: block;
+  margin: 18px auto 0;
+  min-width: 190px;
+}
+
+#reset-btn {
+  display: block;
+  margin: 18px auto 0;
 }
 
 .modal {
@@ -237,10 +260,10 @@ button:hover {
 
 .flag {
   position: absolute;
+  top: -14px;
   width: 0;
   height: 0;
   cursor: pointer;
-  top: -14px;
   z-index: 20;
 }
 
@@ -253,11 +276,20 @@ button:hover {
   transform: translateX(-100%);
 }
 
+.flag-anchor {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform: translate(-20%, -47%);
+  font-size: 18px;
+  line-height: 5;
+}
+
 .flag-tooltip {
   position: absolute;
   bottom: 100%;
   left: 50%;
-  transform: translateX(-50%);
+  transform: translateX(-50%) translateY(0);
   background: #ff6a00;
   color: white;
   padding: 4px 8px;
@@ -269,18 +301,10 @@ button:hover {
   transition: all 0.3s;
 }
 
-.flag:hover .flag-tooltip {
+.flag:hover .flag-tooltip,
+.ms-pin:hover .flag-tooltip {
   opacity: 1;
   transform: translateX(-50%) translateY(-10px);
-}
-
-.flag-anchor {
-  position: absolute;
-  left: 0;
-  top: 0;
-  transform: translate(-20%, -47%);
-  font-size: 18px;
-  line-height: 5;
 }
 
 .ms-pin {
@@ -290,6 +314,7 @@ button:hover {
   width: 0;
   height: 0;
   cursor: pointer;
+  z-index: 25;
 }
 
 .pin-line {
