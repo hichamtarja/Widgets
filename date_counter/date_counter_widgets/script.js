@@ -1,7 +1,6 @@
 const STORAGE_KEY = "date_widget_list";
 const currentWidgetId = new URLSearchParams(window.location.search).get("id");
 
-// Elements
 const inputSection = document.getElementById("input-section");
 const counterSection = document.getElementById("counter-section");
 
@@ -42,16 +41,15 @@ const msStart = document.getElementById("ms-start");
 const msEnd = document.getElementById("ms-end");
 const msSave = document.getElementById("ms-save");
 
-// State
 let countdownInterval = null;
 let milestones = [];
 let showingMilestoneView = false;
+
 let activeStartDate = null;
 let activeEndDate = null;
 let activeStartMs = 0;
 let activeEndMs = 0;
 
-// Storage helpers
 function getWidgets() {
   try {
     return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
@@ -91,9 +89,27 @@ function saveCurrentWidget(partial) {
   saveWidgets(list);
 }
 
-// Utils
+function serializeMilestones(list) {
+  return list.map(ms => ({
+    title: ms.title,
+    start: ms.start instanceof Date ? ms.start.toISOString() : ms.start,
+    end: ms.end instanceof Date ? ms.end.toISOString() : ms.end,
+    colors: ms.colors
+  }));
+}
+
+function deserializeMilestones(list) {
+  if (!Array.isArray(list)) return [];
+  return list.map(ms => ({
+    title: ms.title,
+    start: new Date(ms.start),
+    end: new Date(ms.end),
+    colors: ms.colors || getRandomMilestonePalette()
+  }));
+}
+
 function parseDateInputLocal(value, endOfDay = false) {
-  if (!value) return null;
+  if (!value || typeof value !== "string") return null;
   const parts = value.split("-");
   if (parts.length !== 3) return null;
 
@@ -163,46 +179,14 @@ function injectRunnerAnimationStyle() {
   document.head.appendChild(style);
 }
 
-// Editable title and quote
-function bindEditableTitle() {
-  displayTitle.onclick = () => {
-    const current = displayTitle.dataset.raw || "";
-    const next = prompt("Edit title:", current);
-    if (next === null) return;
-
-    const value = next.trim();
-    titleInput.value = value;
-    displayTitle.dataset.raw = value;
-    displayTitle.textContent = value;
-    displayTitle.style.display = value ? "block" : "none";
-    saveCurrentState();
-  };
-}
-
-function bindEditableQuote() {
-  displayQuote.onclick = () => {
-    const current = displayQuote.dataset.raw || "";
-    const next = prompt("Edit quote:", current);
-    if (next === null) return;
-
-    const value = next.trim();
-    quoteInput.value = value;
-    displayQuote.dataset.raw = value;
-    displayQuote.textContent = value ? `“ ${value} ”` : "";
-    displayQuote.style.display = value ? "block" : "none";
-    saveCurrentState();
-  };
-}
-
-// Overlay helpers
 function ensureMilestoneView() {
   let view = document.getElementById("milestone-view");
 
   if (!view) {
     view = document.createElement("div");
     view.id = "milestone-view";
-    view.addEventListener("click", toggleMilestoneView);
     countdownDisplay.insertAdjacentElement("beforebegin", view);
+    view.addEventListener("click", toggleMilestoneView);
   }
 
   return view;
@@ -221,7 +205,44 @@ function ensureDeadlineMessage() {
   return msg;
 }
 
-// Flags
+function saveCurrentState() {
+  saveCurrentWidget({
+    title: titleInput.value.trim(),
+    quote: quoteInput.value.trim(),
+    startDate: startInput.value,
+    endDate: endInput.value,
+    milestones: serializeMilestones(milestones)
+  });
+}
+
+function bindEditableTitle() {
+  displayTitle.onclick = () => {
+    const next = prompt("Edit title:", displayTitle.dataset.raw || "");
+    if (next === null) return;
+
+    const value = next.trim();
+    titleInput.value = value;
+    displayTitle.dataset.raw = value;
+    displayTitle.textContent = value;
+    displayTitle.style.display = value ? "block" : "none";
+    saveCurrentState();
+  };
+}
+
+function bindEditableQuote() {
+  displayQuote.onclick = () => {
+    const next = prompt("Edit quote:", displayQuote.dataset.raw || "");
+    if (next === null) return;
+
+    const value = next.trim();
+    quoteInput.value = value;
+    displayQuote.dataset.raw = value;
+    displayQuote.textContent = value ? `“ ${value} ”` : "";
+    displayQuote.style.display = value ? "block" : "none";
+    saveCurrentState();
+  };
+}
+
 function renderStartEndFlags() {
   if (!progressContainer || !activeStartDate || !activeEndDate) return;
 
@@ -245,7 +266,6 @@ function renderStartEndFlags() {
   progressContainer.appendChild(endFlag);
 }
 
-// Milestones
 function renderMilestones() {
   if (!progressContainer) return;
 
@@ -275,8 +295,8 @@ function createMilestonePin(percent, ms, kind, stackCounts) {
   const stackIndex = stackCounts[key] || 0;
   stackCounts[key] = stackIndex + 1;
 
-  const dotColor = kind === "start" ? ms.colors.start : ms.colors.end;
-  const labelDate = kind === "start" ? ms.start.toDateString() : ms.end.toDateString();
+  const color = kind === "start" ? ms.colors.start : ms.colors.end;
+  const dateText = kind === "start" ? ms.start.toDateString() : ms.end.toDateString();
 
   const pin = document.createElement("div");
   pin.className = "ms-pin";
@@ -284,9 +304,9 @@ function createMilestonePin(percent, ms, kind, stackCounts) {
   pin.style.top = `${-6 - stackIndex * 16}px`;
 
   pin.innerHTML = `
-    <div class="pin-line" style="background:${dotColor}"></div>
-    <div class="pin-dot" style="background:${dotColor}; box-shadow: 0 0 12px ${dotColor};"></div>
-    <span class="flag-tooltip">${kind === "start" ? ms.title + " Start" : ms.title + " End"} • ${labelDate}</span>
+    <div class="pin-line" style="background:${color}"></div>
+    <div class="pin-dot" style="background:${color}; box-shadow: 0 0 12px ${color};"></div>
+    <span class="flag-tooltip">${kind === "start" ? ms.title + " Start" : ms.title + " End"} • ${dateText}</span>
   `;
 
   progressContainer.appendChild(pin);
@@ -363,7 +383,6 @@ function toggleMilestoneView() {
   }
 }
 
-// Main timer
 function updateCountdown(startMs, endMs) {
   if (!Number.isFinite(startMs) || !Number.isFinite(endMs)) return;
 
@@ -480,11 +499,11 @@ function startCounter() {
     displayQuote.dataset.raw = "";
   }
 
-  bindEditableTitle();
-  bindEditableQuote();
-
   displayStart.textContent = s.toDateString();
   displayEnd.textContent = e.toDateString();
+
+  bindEditableTitle();
+  bindEditableQuote();
 
   runner.style.left = "0%";
   progressFill.style.width = "0%";
@@ -513,8 +532,8 @@ function resetCounter() {
   quoteInput.value = "";
 
   displayTitle.textContent = "";
-  displayTitle.dataset.raw = "";
   displayQuote.textContent = "";
+  displayTitle.dataset.raw = "";
   displayQuote.dataset.raw = "";
   displayTitle.style.display = "none";
   displayQuote.style.display = "none";
@@ -706,4 +725,6 @@ if (addMsBtn && modal && closeModal && msTitle && msStart && msEnd && msSave) {
   });
 }
 
-countdownDisplay.addEventListener("click", toggleMilestoneView);
+if (countdownDisplay) {
+  countdownDisplay.addEventListener("click", toggleMilestoneView);
+}
