@@ -158,7 +158,7 @@ function renderStartEndFlags() {
   const startFlag = document.createElement('div');
   startFlag.classList.add('flag', 'flag-start');
   startFlag.style.left = '0px';
-  startFlag.style.top = '-25px';
+  startFlag.style.top = '-14px';
   startFlag.style.zIndex = '20';
   startFlag.innerHTML = `
     <span class="flag-anchor">🚩</span>
@@ -170,7 +170,7 @@ function renderStartEndFlags() {
   endFlag.classList.add('flag', 'flag-end');
   endFlag.style.left = 'auto';
   endFlag.style.right = '0px';
-  endFlag.style.top = '-25px';
+  endFlag.style.top = '-14px';
   endFlag.style.zIndex = '20';
   endFlag.innerHTML = `
     <span class="flag-anchor">🚩</span>
@@ -220,7 +220,7 @@ function createMilestonePin(percent, ms, kind, stackCounts) {
 
   Object.assign(pin.style, {
     position: 'absolute',
-    left: `calc(${percent}% )`,
+    left: `calc(${percent}% + 5px)`,
     top: `${-6 - stackIndex * 16}px`,
     transform: 'translateX(-50%)',
     zIndex: `${20 + stackIndex}`,
