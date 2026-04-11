@@ -111,6 +111,7 @@ function deserializeMilestones(list) {
 
 function parseDateInputLocal(value, endOfDay = false) {
   if (!value || typeof value !== 'string') return null;
+
   const parts = value.split('-').map(Number);
   if (parts.length !== 3 || parts.some(n => Number.isNaN(n))) return null;
 
