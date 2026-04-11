@@ -21,15 +21,13 @@ body {
   position: relative;
 }
 
-.back-btn,
-.back-btn:visited {
+.back-btn {
   position: absolute;
   top: 15px;
   left: 15px;
   color: #aaa;
   text-decoration: none;
-  font-size: 24px;
-  line-height: 1;
+  font-size: 18px;
   z-index: 50;
 }
 
@@ -156,7 +154,6 @@ button:hover {
   margin-top: 20px;
   position: relative;
   height: 30px;
-  width: 100%;
   overflow: visible;
 }
 
@@ -240,10 +237,10 @@ button:hover {
 
 .flag {
   position: absolute;
-  top: -14px;
   width: 0;
   height: 0;
   cursor: pointer;
+  top: -14px;
   z-index: 20;
 }
 
@@ -256,20 +253,11 @@ button:hover {
   transform: translateX(-100%);
 }
 
-.flag-anchor {
-  position: absolute;
-  left: 0;
-  top: 0;
-  transform: translate(-20%, -47%);
-  font-size: 18px;
-  line-height: 5;
-}
-
 .flag-tooltip {
   position: absolute;
   bottom: 100%;
   left: 50%;
-  transform: translateX(-50%) translateY(0);
+  transform: translateX(-50%);
   background: #ff6a00;
   color: white;
   padding: 4px 8px;
@@ -281,10 +269,18 @@ button:hover {
   transition: all 0.3s;
 }
 
-.flag:hover .flag-tooltip,
-.ms-pin:hover .flag-tooltip {
+.flag:hover .flag-tooltip {
   opacity: 1;
   transform: translateX(-50%) translateY(-10px);
+}
+
+.flag-anchor {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform: translate(-20%, -47%);
+  font-size: 18px;
+  line-height: 5;
 }
 
 .ms-pin {
@@ -294,7 +290,6 @@ button:hover {
   width: 0;
   height: 0;
   cursor: pointer;
-  z-index: 25;
 }
 
 .pin-line {
