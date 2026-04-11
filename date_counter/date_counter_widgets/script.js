@@ -46,6 +46,11 @@ let countdownInterval = null;
 let milestones = [];
 let showingMilestoneView = false;
 
+let activeStartDate = null;
+let activeEndDate = null;
+let activeStartMs = null;
+let activeEndMs = null;
+
 function getWidgets() {
   try {
     return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
@@ -102,6 +107,17 @@ function deserializeMilestones(list) {
     end: new Date(ms.end),
     colors: ms.colors || getRandomMilestonePalette()
   }));
+}
+
+function parseDateInputLocal(value, endOfDay = false) {
+  if (!value || typeof value !== 'string') return null;
+  const parts = value.split('-').map(Number);
+  if (parts.length !== 3 || parts.some(n => Number.isNaN(n))) return null;
+
+  const [year, month, day] = parts;
+  return endOfDay
+    ? new Date(year, month - 1, day, 23, 59, 59, 999)
+    : new Date(year, month - 1, day, 0, 0, 0, 0);
 }
 
 function animateValue(element, value) {
@@ -228,18 +244,15 @@ function bindEditableQuote() {
 }
 
 function renderStartEndFlags() {
-  if (!progressContainer) return;
+  if (!progressContainer || !activeStartDate || !activeEndDate) return;
 
   document.querySelectorAll('.flag-start, .flag-end').forEach(el => el.remove());
-
-  const mainStart = new Date(startInput.value);
-  const mainEnd = new Date(endInput.value);
 
   const startFlag = document.createElement('div');
   startFlag.className = 'flag flag-start';
   startFlag.innerHTML = `
     <span class="flag-anchor">🚩</span>
-    <span class="flag-tooltip">Start: ${mainStart.toDateString()}</span>
+    <span class="flag-tooltip">Start: ${activeStartDate.toDateString()}</span>
   `;
   progressContainer.appendChild(startFlag);
 
@@ -247,7 +260,7 @@ function renderStartEndFlags() {
   endFlag.className = 'flag flag-end';
   endFlag.innerHTML = `
     <span class="flag-anchor">🚩</span>
-    <span class="flag-tooltip">End: ${mainEnd.toDateString()}</span>
+    <span class="flag-tooltip">End: ${activeEndDate.toDateString()}</span>
   `;
   progressContainer.appendChild(endFlag);
 }
@@ -257,12 +270,9 @@ function renderMilestones() {
 
   document.querySelectorAll('.ms-pin').forEach(el => el.remove());
 
-  if (!milestones.length || !startInput.value || !endInput.value) return;
+  if (!milestones.length || !activeStartDate || !activeEndDate) return;
 
-  const mainStart = new Date(startInput.value);
-  const mainEnd = new Date(endInput.value);
-  const totalDuration = mainEnd - mainStart;
-
+  const totalDuration = activeEndMs - activeStartMs;
   if (totalDuration <= 0) return;
 
   const stackCounts = {};
@@ -271,8 +281,8 @@ function renderMilestones() {
     .slice()
     .sort((a, b) => a.start - b.start || a.end - b.end || a.title.localeCompare(b.title))
     .forEach((ms) => {
-      const startPerc = ((ms.start - mainStart) / totalDuration) * 100;
-      const endPerc = ((ms.end - mainStart) / totalDuration) * 100;
+      const startPerc = ((ms.start - activeStartMs) / totalDuration) * 100;
+      const endPerc = ((ms.end - activeStartMs) / totalDuration) * 100;
 
       createMilestonePin(startPerc, ms, 'start', stackCounts);
       createMilestonePin(endPerc, ms, 'end', stackCounts);
@@ -378,9 +388,11 @@ function toggleMilestoneView() {
   }
 }
 
-function updateCountdown(start, end) {
-  const now = new Date();
-  let diff = end - now;
+function updateCountdown(startMs, endMs) {
+  if (!Number.isFinite(startMs) || !Number.isFinite(endMs)) return;
+
+  const nowMs = Date.now();
+  let diff = endMs - nowMs;
   const deadlineMessage = ensureDeadlineMessage();
 
   if (diff <= 0) {
@@ -415,10 +427,10 @@ function updateCountdown(start, end) {
     document.querySelectorAll('#countdown div').forEach((d) => d.classList.remove('danger'));
   }
 
-  const totalDuration = end - start;
-  const elapsed = now - start;
+  const totalDuration = endMs - startMs;
+  const elapsed = nowMs - startMs;
 
-  let progress = (elapsed / totalDuration) * 100;
+  let progress = totalDuration > 0 ? (elapsed / totalDuration) * 100 : 0;
   progress = Math.max(0, Math.min(100, progress));
 
   progressFill.style.width = progress + '%';
@@ -427,7 +439,7 @@ function updateCountdown(start, end) {
   runner.style.animation = 'runnerBounce 0.7s ease-in-out infinite alternate';
 
   if (showingMilestoneView) {
-    updateMilestoneView(now);
+    updateMilestoneView(new Date(nowMs));
   }
 }
 
@@ -529,18 +541,23 @@ function showMilestoneList() {
 }
 
 function startCounter() {
-   const startDate = new Date(startInput.value + "T00:00:00");
-   const endDate = new Date(endInput.value + "T23:59:59");
+  const startDate = parseDateInputLocal(startInput.value, false);
+  const endDate = parseDateInputLocal(endInput.value, true);
 
   if (!startInput.value || !endInput.value) {
     alert('Please enter dates!');
     return;
   }
 
-  if (isNaN(startDate) || isNaN(endDate)) {
+  if (!startDate || !endDate || isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
     alert('Invalid dates!');
     return;
   }
+
+  activeStartDate = startDate;
+  activeEndDate = endDate;
+  activeStartMs = startDate.getTime();
+  activeEndMs = endDate.getTime();
 
   inputSection.style.display = 'none';
   counterSection.style.display = 'block';
@@ -582,19 +599,20 @@ function startCounter() {
   bindEditableTitle();
   bindEditableQuote();
 
-  renderStartEndFlags();
-  renderMilestones();
-
   saveCurrentState();
 
   runner.style.left = '0%';
   progressFill.style.width = '0%';
 
-  updateCountdown(startDate, endDate);
+  requestAnimationFrame(() => {
+    renderStartEndFlags();
+    renderMilestones();
+    updateCountdown(activeStartMs, activeEndMs);
+  });
 
   clearInterval(countdownInterval);
   countdownInterval = setInterval(() => {
-    updateCountdown(startDate, endDate);
+    updateCountdown(activeStartMs, activeEndMs);
   }, 1000);
 }
 
@@ -619,6 +637,10 @@ function resetCounter() {
 
   milestones = [];
   showingMilestoneView = false;
+  activeStartDate = null;
+  activeEndDate = null;
+  activeStartMs = null;
+  activeEndMs = null;
 
   document.querySelectorAll('.flag-start, .flag-end, .ms-pin').forEach(el => el.remove());
 
@@ -636,7 +658,6 @@ function resetCounter() {
 
   progressFill.style.width = '0%';
   runner.style.left = '0%';
-  countdownDisplay.innerHTML = '';
 
   saveCurrentState();
 }
@@ -698,17 +719,20 @@ if (addMsBtn && modal && closeModal && msTitle && msStart && msEnd && msSave) {
 
   msSave.addEventListener('click', () => {
     const title = msTitle.value.trim();
-    const start = new Date(msStart.value);
-    const end = new Date(msEnd.value);
-    const mainStart = new Date(startInput.value);
-    const mainEnd = new Date(endInput.value);
+    const start = parseDateInputLocal(msStart.value, false);
+    const end = parseDateInputLocal(msEnd.value, true);
 
-    if (!title || isNaN(start.getTime()) || isNaN(end.getTime())) {
+    if (!title || !start || !end || isNaN(start.getTime()) || isNaN(end.getTime())) {
       alert('Fill all fields correctly!');
       return;
     }
 
-    if (start < mainStart || end > mainEnd || start > end) {
+    if (!activeStartDate || !activeEndDate) {
+      alert('Start the counter first!');
+      return;
+    }
+
+    if (start < activeStartDate || end > activeEndDate || start > end) {
       alert('Milestone must be within countdown start & end!');
       return;
     }
