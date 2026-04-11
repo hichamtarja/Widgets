@@ -2,69 +2,20 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Date Counter Streak</title>
+<title>Date Counter Dashboard</title>
 <link rel="stylesheet" href="style.css">
 </head>
-<body>
+<body class="dashboard-page">
 
-<div class="container">
+<div class="dashboard">
+  <h1>⏳ Date Counter Widgets</h1>
+  <p class="subtitle">Create and manage your countdown systems</p>
 
-  <!-- Input form -->
-  <div id="input-section">
-    <h1>Date Counter Streak</h1>
-    <input type="text" id="title" placeholder="Enter Title">
-    <input type="date" id="start-date">
-    <input type="date" id="end-date">
-    <textarea id="quote" placeholder="Enter a quote or message"></textarea>
-    <button id="start-btn" type="button">Start Counter</button>
-  </div>
+  <button id="create-widget-btn" class="primary-btn">
+    + Create new counter
+  </button>
 
-  <!-- Countdown display -->
-  <div id="counter-section" style="display:none;">
-    <h1 id="counter-title"></h1>
-    <div class="dates">
-      <p>Start: <span id="display-start"></span></p>
-      <p>End: <span id="display-end"></span></p>
-    </div>
-
-    <!-- Progress bar with running man -->
-    <div class="progress-container">
-      <img src="runner.gif" class="runner" id="runner" alt="runner">
-      <div class="progress-bar">
-        <div class="progress-fill" id="progress-fill"></div>
-      </div>
-    </div>
-
-        <!-- Milestone button -->
-    <button id="add-milestone-btn">Add Milestone</button>
-    
-    <!-- Milestone modal -->
-    <div id="milestone-modal" class="modal">
-      <div class="modal-content">
-        <span class="close">&times;</span>
-        <h2>Add Milestone</h2>
-        <input type="text" id="ms-title" placeholder="Milestone Title">
-        <input type="date" id="ms-start">
-        <input type="date" id="ms-end">
-        <button id="ms-save">Save Milestone</button>
-      </div>
-    </div>
-
-    <!-- Countdown panels -->
-    <div id="countdown">
-      <div><span id="years">0</span> Years</div>
-      <div><span id="months">0</span> Months</div>
-      <div><span id="weeks">0</span> Weeks</div>
-      <div><span id="days">0</span> Days</div>
-      <div><span id="hours">0</span> Hours</div>
-      <div><span id="minutes">0</span> Minutes</div>
-      <div><span id="seconds">0</span> Seconds</div>
-    </div>
-
-    <p id="display-quote"></p>
-    <button id="reset-btn">Reset</button>
-  </div>
-
+  <div id="widget-list" class="widget-list"></div>
 </div>
 
 <script src="script.js"></script>
