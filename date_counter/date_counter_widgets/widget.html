@@ -1,27 +1,31 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Date Counter Widget</title>
-  <link rel="stylesheet" href="style.css">
+<meta charset="UTF-8">
+<title>Date Counter Widget</title>
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
   <a href="../index.html" class="back-btn" title="Back to dashboard">←</a>
 
   <div class="container">
     <div id="input-section">
-      <h1 id="counter-title">Date Counter</h1>
+      <h1>Date Counter Streak</h1>
 
       <input type="text" id="title" placeholder="Enter Title">
       <input type="date" id="start-date">
       <input type="date" id="end-date">
-      <textarea id="quote" placeholder="Enter a quote or message"></textarea>
+      <textarea id="quote" placeholder="Enter an quote or message"></textarea>
 
       <button id="start-btn" type="button">Start Counter</button>
     </div>
 
     <div id="counter-section" style="display:none;">
       <h1 id="display-title"></h1>
+
+      <div class="counter-panel">
+        <div id="countdown"></div>
+      </div>
 
       <div class="dates">
         <p>Start: <span id="display-start"></span></p>
@@ -40,8 +44,6 @@
         <button id="view-milestones-btn">View Milestones</button>
         <button id="toggle-tools-btn">Hide Tools</button>
       </div>
-
-      <div id="countdown"></div>
 
       <p id="display-quote"></p>
       <button id="reset-btn">Reset</button>
