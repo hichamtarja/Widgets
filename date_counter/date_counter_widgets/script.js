@@ -7,7 +7,6 @@ const currentWidgetId = new URLSearchParams(window.location.search).get("id");
 const inputSection = document.getElementById('input-section');
 const counterSection = document.getElementById('counter-section');
 const startBtn = document.getElementById('start-btn');
-const resetBtn = document.getElementById('reset-btn');
 const titleInput = document.getElementById('title');
 const startInput = document.getElementById('start-datetime');
 const endInput = document.getElementById('end-datetime');
@@ -39,8 +38,13 @@ const msStart = document.getElementById('ms-start');
 const msEnd = document.getElementById('ms-end');
 const msSave = document.getElementById('ms-save');
 
+// Menu elements
+const menuToggle = document.getElementById('menu-toggle');
+const menuDropdown = document.getElementById('menu-dropdown');
+const menuSettings = document.getElementById('menu-settings');
+const menuReset = document.getElementById('menu-reset');
+
 // Customization Elements
-const settingsToggle = document.getElementById('settings-toggle');
 const settingsPanel = document.getElementById('settings-panel');
 const closeSettings = document.getElementById('close-settings');
 const accentColorInput = document.getElementById('accent-color');
@@ -61,7 +65,6 @@ let countdownInterval = null;
 let milestones = [];
 let showingMilestoneView = false;
 let currentAccentColor = '#ff6a00';
-let currentCustomization = {};
 
 // ======================== HELPER: Prevent past dates ========================
 function setMinDateTime() {
@@ -152,15 +155,13 @@ function adjustColor(hex, percent) {
 function updateButtonGradients() {
   const accent = currentAccentColor;
   const secondary = adjustColor(accent, 20);
-  const buttons = document.querySelectorAll('button:not(#reset-btn):not(.icon-btn)');
+  const buttons = document.querySelectorAll('button:not(.tool-btn):not(.icon-btn):not(.menu-btn):not(.menu-item)');
   buttons.forEach(btn => {
     btn.style.background = `linear-gradient(135deg, ${accent}, ${secondary})`;
   });
 }
 
 function applyCustomization(settings) {
-  currentCustomization = settings;
-  
   // Accent color
   if (settings.accent) {
     currentAccentColor = settings.accent;
@@ -438,7 +439,6 @@ function startCounter() {
   // Apply saved customization (if any)
   const savedCustom = loadCustomization();
   if (Object.keys(savedCustom).length === 0) {
-    // Default settings
     savedCustom.accent = '#ff6a00';
     savedCustom.fontFamily = "'Segoe UI', 'Arial', sans-serif";
     savedCustom.textColor = '#f0f0f0';
@@ -609,7 +609,8 @@ function showMilestoneList() {
 // ======================== TOOLS VISIBILITY ========================
 function applyToolsVisibility(hidden) {
   [addMsBtn, viewMsBtn].forEach(btn => { if(btn) btn.style.display = hidden ? 'none' : 'inline-block'; });
-  if (toggleToolsBtn) toggleToolsBtn.textContent = hidden ? "👁️ Show Tools" : "👁️ Hide Tools";
+  toggleToolsBtn.textContent = hidden ? '👁️‍🗨️' : '👁️';
+  toggleToolsBtn.title = hidden ? 'Show Tools' : 'Hide Tools';
 }
 
 // ======================== INITIALIZATION ========================
@@ -630,7 +631,6 @@ function initFromSavedWidget() {
   if (Object.keys(savedCustom).length > 0) {
     applyCustomization(savedCustom);
   } else {
-    // Default customization
     applyCustomization({ accent: '#ff6a00', fontFamily: "'Segoe UI', 'Arial', sans-serif", textColor: '#f0f0f0', bgType: 'solid', bgColor: '#191919', size: 100 });
   }
 
@@ -645,8 +645,24 @@ function initFromSavedWidget() {
 }
 
 // ======================== EVENT LISTENERS ========================
+// Three-dot menu
+menuToggle.addEventListener('click', (e) => {
+  e.stopPropagation();
+  menuDropdown.classList.toggle('hidden');
+});
+document.addEventListener('click', () => menuDropdown.classList.add('hidden'));
+menuSettings.addEventListener('click', () => {
+  settingsPanel.classList.remove('hidden');
+  menuDropdown.classList.add('hidden');
+});
+menuReset.addEventListener('click', () => {
+  if (confirm('Reset this counter?')) {
+    resetCounter();
+  }
+  menuDropdown.classList.add('hidden');
+});
+
 // Customization panel events
-settingsToggle.addEventListener('click', () => settingsPanel.classList.remove('hidden'));
 closeSettings.addEventListener('click', () => {
   settingsPanel.classList.add('hidden');
   gatherAndSaveCustomization();
@@ -710,7 +726,6 @@ document.addEventListener('mouseup', () => { isDragging = false; settingsPanel.s
 
 // Other event listeners
 startBtn.addEventListener('click', startCounter);
-resetBtn.addEventListener('click', resetCounter);
 toggleToolsBtn.addEventListener('click', () => {
   const hidden = !(localStorage.getItem("date_counter_tools_hidden") === "true");
   localStorage.setItem("date_counter_tools_hidden", hidden);
