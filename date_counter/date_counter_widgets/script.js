@@ -1,18 +1,18 @@
+// ======================== GLOBAL VARIABLES & SETUP ========================
 const STORAGE_KEY = "date_widget_list";
 const currentWidgetId = new URLSearchParams(window.location.search).get("id");
 
+// DOM Elements
 const inputSection = document.getElementById('input-section');
 const counterSection = document.getElementById('counter-section');
-
 const startBtn = document.getElementById('start-btn');
 const resetBtn = document.getElementById('reset-btn');
-
 const titleInput = document.getElementById('title');
-const startInput = document.getElementById('start-date');
-const endInput = document.getElementById('end-date');
+const startInput = document.getElementById('start-datetime');   // Now datetime-local
+const endInput = document.getElementById('end-datetime');       // Now datetime-local
 const quoteInput = document.getElementById('quote');
+const accentColorInput = document.getElementById('accent-color');
 
-const counterTitle = document.getElementById('counter-title');
 const displayTitle = document.getElementById('display-title');
 const displayQuote = document.getElementById('display-quote');
 
@@ -32,7 +32,6 @@ const countdownDisplay = document.getElementById('countdown');
 const addMsBtn = document.getElementById('add-milestone-btn');
 const viewMsBtn = document.getElementById('view-milestones-btn');
 const toggleToolsBtn = document.getElementById('toggle-tools-btn');
-
 const modal = document.getElementById('milestone-modal');
 const closeModal = document.querySelector('.modal .close');
 const msTitle = document.getElementById('ms-title');
@@ -40,50 +39,58 @@ const msStart = document.getElementById('ms-start');
 const msEnd = document.getElementById('ms-end');
 const msSave = document.getElementById('ms-save');
 
+// State
 let countdownInterval = null;
 let milestones = [];
 let showingMilestoneView = false;
+let currentAccentColor = '#ff6a00';  // default
 
-// ---------- Local Storage Helpers ----------
-function getWidgets() {
-  try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
-  } catch {
-    return [];
-  }
+// ======================== HELPER: Prevent past dates ========================
+function setMinDateTime() {
+  const now = new Date();
+  // Format to YYYY-MM-DDTHH:MM (local time)
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  const hours = String(now.getHours()).padStart(2, '0');
+  const minutes = String(now.getMinutes()).padStart(2, '0');
+  const minDateTime = `${year}-${month}-${day}T${hours}:${minutes}`;
+  
+  startInput.min = minDateTime;
+  endInput.min = minDateTime;
+  if (msStart) msStart.min = minDateTime;
+  if (msEnd) msEnd.min = minDateTime;
 }
+setMinDateTime(); // call immediately
+// Also update min when inputs gain focus (in case time passes)
+startInput.addEventListener('focus', setMinDateTime);
+endInput.addEventListener('focus', setMinDateTime);
 
+// ======================== LOCAL STORAGE MANAGEMENT ========================
+function getWidgets() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
+  catch { return []; }
+}
 function saveWidgets(list) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
 }
-
 function getCurrentWidget() {
   if (!currentWidgetId) return null;
   return getWidgets().find(w => String(w.id) === String(currentWidgetId)) || null;
 }
-
 function saveCurrentWidget(partial) {
   if (!currentWidgetId) return;
-
   const list = getWidgets();
   let widget = list.find(w => String(w.id) === String(currentWidgetId));
-
   if (!widget) {
-    widget = {
-      id: currentWidgetId,
-      title: "",
-      quote: "",
-      startDate: "",
-      endDate: "",
-      milestones: []
-    };
+    widget = { id: currentWidgetId, title: "", quote: "", startDate: "", endDate: "", milestones: [], accentColor: '#ff6a00' };
     list.push(widget);
   }
-
   Object.assign(widget, partial);
   saveWidgets(list);
 }
 
+// Serialization helpers for milestones (Date <-> ISO string)
 function serializeMilestones(list) {
   return list.map(ms => ({
     title: ms.title,
@@ -92,7 +99,6 @@ function serializeMilestones(list) {
     colors: ms.colors
   }));
 }
-
 function deserializeMilestones(list) {
   if (!Array.isArray(list)) return [];
   return list.map(ms => ({
@@ -103,7 +109,43 @@ function deserializeMilestones(list) {
   }));
 }
 
-// ---------- UI Helpers ----------
+// ======================== COLOR & THEME ========================
+function applyAccentColor(color) {
+  currentAccentColor = color;
+  // Set CSS variables for gradient usage
+  document.documentElement.style.setProperty('--accent', color);
+  // Generate a slightly lighter/darker secondary color for gradient depth
+  const secondary = adjustColor(color, 20);
+  document.documentElement.style.setProperty('--accent-secondary', secondary);
+  
+  // Update button styles dynamically
+  const buttons = document.querySelectorAll('button:not(#reset-btn)');
+  buttons.forEach(btn => {
+    btn.style.background = `linear-gradient(135deg, ${color}, ${secondary})`;
+  });
+  // Also update progress fill gradient (via CSS variables already)
+}
+
+function adjustColor(hex, percent) {
+  // Simple lightness adjustment (quick & dirty)
+  let R = parseInt(hex.substring(1,3),16);
+  let G = parseInt(hex.substring(3,5),16);
+  let B = parseInt(hex.substring(5,7),16);
+  R = Math.min(255, Math.max(0, R + percent));
+  G = Math.min(255, Math.max(0, G + percent));
+  B = Math.min(255, Math.max(0, B + percent));
+  return `#${((1 << 24) + (R << 16) + (G << 8) + B).toString(16).slice(1)}`;
+}
+
+function getRandomMilestonePalette() {
+  const hue = Math.floor(Math.random() * 360);
+  return {
+    start: `hsl(${hue}, 85%, 60%)`,
+    end: `hsl(${(hue + 35) % 360}, 85%, 68%)`
+  };
+}
+
+// ======================== UI UTILITIES ========================
 function animateValue(element, value) {
   element.classList.add('tick');
   setTimeout(() => element.classList.remove('tick'), 300);
@@ -112,7 +154,6 @@ function animateValue(element, value) {
 
 function getTimeParts(totalMilliseconds) {
   const totalSeconds = Math.max(0, Math.floor(totalMilliseconds / 1000));
-
   return {
     years: Math.floor(totalSeconds / (365 * 24 * 3600)),
     months: Math.floor((totalSeconds % (365 * 24 * 3600)) / (30 * 24 * 3600)),
@@ -124,114 +165,27 @@ function getTimeParts(totalMilliseconds) {
   };
 }
 
-function getRandomMilestonePalette() {
-  const hue = Math.floor(Math.random() * 360);
-  return {
-    start: `hsl(${hue}, 85%, 60%)`,
-    end: `hsl(${(hue + 35) % 360}, 85%, 68%)`
-  };
-}
-
 function escapeHtml(text) {
-  return String(text).replace(/[&<>"']/g, (ch) => {
-    const map = {
-      '&': '&amp;',
-      '<': '&lt;',
-      '>': '&gt;',
-      '"': '&quot;',
-      "'": '&#39;'
-    };
-    return map[ch] || ch;
-  });
+  return String(text).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch] || ch));
 }
 
+// Inject runner bounce animation
 function injectRunnerAnimationStyle() {
   if (document.getElementById('runner-anim-style')) return;
-
   const style = document.createElement('style');
   style.id = 'runner-anim-style';
   style.textContent = `
     @keyframes runnerBounce {
       0% { transform: translateY(0px) rotate(-2deg); }
-      100% { transform: translateY(-4px) rotate(2deg); }
+      100% { transform: translateY(-6px) rotate(2deg); }
     }
   `;
   document.head.appendChild(style);
 }
 
-function ensureMilestoneView() {
-  let view = document.getElementById('milestone-view');
-
-  if (!view) {
-    view = document.createElement('div');
-    view.id = 'milestone-view';
-    view.addEventListener('click', toggleMilestoneView);
-    countdownDisplay.insertAdjacentElement('beforebegin', view);
-  }
-
-  return view;
-}
-
-function ensureDeadlineMessage() {
-  let msg = document.getElementById('deadline-message');
-
-  if (!msg) {
-    msg = document.createElement('div');
-    msg.id = 'deadline-message';
-    msg.style.display = 'none';
-    countdownDisplay.insertAdjacentElement('beforebegin', msg);
-  }
-
-  return msg;
-}
-
-function saveCurrentState() {
-  saveCurrentWidget({
-    title: titleInput.value.trim(),
-    quote: quoteInput.value.trim(),
-    startDate: startInput.value,
-    endDate: endInput.value,
-    milestones: serializeMilestones(milestones)
-  });
-}
-
-function bindEditableTitle() {
-  displayTitle.onclick = () => {
-    const current = displayTitle.dataset.raw || displayTitle.textContent || "";
-    const next = prompt("Edit title:", current);
-    if (next === null) return;
-
-    const value = next.trim();
-    titleInput.value = value;
-    displayTitle.dataset.raw = value;
-    displayTitle.textContent = value;
-    displayTitle.style.display = value ? 'block' : 'none';
-
-    saveCurrentState();
-  };
-}
-
-function bindEditableQuote() {
-  displayQuote.onclick = () => {
-    const current = displayQuote.dataset.raw || "";
-    const next = prompt("Edit quote:", current);
-    if (next === null) return;
-
-    const value = next.trim();
-    quoteInput.value = value;
-    displayQuote.dataset.raw = value;
-    displayQuote.textContent = value ? `“ ${value} ”` : '';
-    displayQuote.style.display = value ? 'block' : 'none';
-
-    saveCurrentState();
-  };
-}
-
-// ---------- FIXED: Flag rendering with proper centering ----------
+// ======================== FLAGS & MILESTONE RENDERING ========================
 function renderStartEndFlags() {
   if (!progressContainer) return;
-
-  // Remove existing flags
   document.querySelectorAll('.flag-start, .flag-end').forEach(el => el.remove());
 
   const mainStart = new Date(startInput.value);
@@ -240,49 +194,35 @@ function renderStartEndFlags() {
   const startFlag = document.createElement('div');
   startFlag.className = 'flag flag-start';
   startFlag.style.pointerEvents = 'auto';
-  startFlag.style.cursor = 'pointer';
-  startFlag.innerHTML = `
-    <span class="flag-anchor" style="font-size:20px; line-height:1;">🚩</span>
-    <span class="flag-tooltip">Start: ${mainStart.toDateString()}</span>
-  `;
+  startFlag.style.cursor = 'help';
+  startFlag.innerHTML = `<span class="flag-anchor">🚩</span><span class="flag-tooltip">Start: ${mainStart.toLocaleString()}</span>`;
   progressContainer.appendChild(startFlag);
 
   const endFlag = document.createElement('div');
   endFlag.className = 'flag flag-end';
   endFlag.style.pointerEvents = 'auto';
-  endFlag.style.cursor = 'pointer';
-  endFlag.innerHTML = `
-    <span class="flag-anchor" style="font-size:20px; line-height:1;">🚩</span>
-    <span class="flag-tooltip">End: ${mainEnd.toDateString()}</span>
-  `;
+  endFlag.style.cursor = 'help';
+  endFlag.innerHTML = `<span class="flag-anchor">🏁</span><span class="flag-tooltip">End: ${mainEnd.toLocaleString()}</span>`;
   progressContainer.appendChild(endFlag);
 }
 
 function renderMilestones() {
   if (!progressContainer) return;
-
   document.querySelectorAll('.ms-pin').forEach(el => el.remove());
-
   if (!milestones.length || !startInput.value || !endInput.value) return;
 
   const mainStart = new Date(startInput.value);
   const mainEnd = new Date(endInput.value);
   const totalDuration = mainEnd - mainStart;
-
   if (totalDuration <= 0) return;
 
   const stackCounts = {};
-
-  milestones
-    .slice()
-    .sort((a, b) => a.start - b.start || a.end - b.end || a.title.localeCompare(b.title))
-    .forEach((ms) => {
-      const startPerc = ((ms.start - mainStart) / totalDuration) * 100;
-      const endPerc = ((ms.end - mainStart) / totalDuration) * 100;
-
-      createMilestonePin(startPerc, ms, 'start', stackCounts);
-      createMilestonePin(endPerc, ms, 'end', stackCounts);
-    });
+  milestones.slice().sort((a,b) => a.start - b.start).forEach(ms => {
+    const startPerc = ((ms.start - mainStart) / totalDuration) * 100;
+    const endPerc = ((ms.end - mainStart) / totalDuration) * 100;
+    createMilestonePin(startPerc, ms, 'start', stackCounts);
+    createMilestonePin(endPerc, ms, 'end', stackCounts);
+  });
 }
 
 function createMilestonePin(percent, ms, kind, stackCounts) {
@@ -292,98 +232,83 @@ function createMilestonePin(percent, ms, kind, stackCounts) {
 
   const pin = document.createElement('div');
   pin.className = 'ms-pin';
-
   Object.assign(pin.style, {
     left: `calc(${percent}% + 5px)`,
     top: `${-6 - stackIndex * 16}px`,
-    zIndex: `${20 + stackIndex}`
+    zIndex: 20 + stackIndex
   });
 
   const dotColor = kind === 'start' ? ms.colors.start : ms.colors.end;
-  const labelDate = kind === 'start' ? ms.start.toDateString() : ms.end.toDateString();
-
+  const labelDate = kind === 'start' ? ms.start.toLocaleString() : ms.end.toLocaleString();
   pin.innerHTML = `
     <div class="pin-line" style="background:${dotColor}"></div>
     <div class="pin-dot" style="background:${dotColor}; box-shadow: 0 0 12px ${dotColor};"></div>
-    <span class="flag-tooltip">${kind === 'start' ? ms.title + ' Start' : ms.title + ' End'} • ${labelDate}</span>
+    <span class="flag-tooltip">${kind==='start'?ms.title+' Start':ms.title+' End'} • ${labelDate}</span>
   `;
-
   progressContainer.appendChild(pin);
 }
 
-function getNextMilestone(now = new Date()) {
-  const upcoming = milestones
-    .filter((ms) => ms.end > now)
-    .sort((a, b) => a.end - b.end || a.start - b.start || a.title.localeCompare(b.title));
+// ======================== MILESTONE VIEW (Next milestone) ========================
+function ensureMilestoneView() {
+  let view = document.getElementById('milestone-view');
+  if (!view) {
+    view = document.createElement('div');
+    view.id = 'milestone-view';
+    view.addEventListener('click', toggleMilestoneView);
+    countdownDisplay.insertAdjacentElement('beforebegin', view);
+  }
+  return view;
+}
+function ensureDeadlineMessage() {
+  let msg = document.getElementById('deadline-message');
+  if (!msg) {
+    msg = document.createElement('div');
+    msg.id = 'deadline-message';
+    msg.style.display = 'none';
+    countdownDisplay.insertAdjacentElement('beforebegin', msg);
+  }
+  return msg;
+}
 
-  return upcoming[0] || null;
+function getNextMilestone(now = new Date()) {
+  return milestones.filter(ms => ms.end > now).sort((a,b) => a.end - b.end)[0] || null;
 }
 
 function updateMilestoneView(now = new Date()) {
   const view = ensureMilestoneView();
   const next = getNextMilestone(now);
-
   if (!next) {
-    view.innerHTML = `
-      <div style="font-size:18px;font-weight:700;margin-bottom:8px;">No upcoming milestone</div>
-      <div style="opacity:.75;">Tap again to return to the main counter.</div>
-    `;
+    view.innerHTML = `<div style="font-size:18px;">No upcoming milestone</div><div style="opacity:.7;">Tap to return</div>`;
     return;
   }
-
   const remaining = Math.max(0, next.end - now);
   const parts = getTimeParts(remaining);
-
   view.innerHTML = `
-    <div style="font-size:14px;opacity:.75;margin-bottom:8px;">Next milestone completion</div>
-    <div style="font-size:22px;font-weight:800;margin-bottom:10px;">${escapeHtml(next.title)}</div>
-    <div style="display:flex;justify-content:center;flex-wrap:wrap;gap:10px;margin-bottom:12px;">
-      <div style="min-width:74px;padding:10px 12px;border-radius:14px;background:rgba(255,255,255,0.06);">
-        <div style="font-size:22px;font-weight:800;">${parts.years}</div><div style="font-size:12px;opacity:.8;">Years</div>
-      </div>
-      <div style="min-width:74px;padding:10px 12px;border-radius:14px;background:rgba(255,255,255,0.06);">
-        <div style="font-size:22px;font-weight:800;">${parts.months}</div><div style="font-size:12px;opacity:.8;">Months</div>
-      </div>
-      <div style="min-width:74px;padding:10px 12px;border-radius:14px;background:rgba(255,255,255,0.06);">
-        <div style="font-size:22px;font-weight:800;">${parts.weeks}</div><div style="font-size:12px;opacity:.8;">Weeks</div>
-      </div>
-      <div style="min-width:74px;padding:10px 12px;border-radius:14px;background:rgba(255,255,255,0.06);">
-        <div style="font-size:22px;font-weight:800;">${parts.days}</div><div style="font-size:12px;opacity:.8;">Days</div>
-      </div>
-      <div style="min-width:74px;padding:10px 12px;border-radius:14px;background:rgba(255,255,255,0.06);">
-        <div style="font-size:22px;font-weight:800;">${parts.hours}</div><div style="font-size:12px;opacity:.8;">Hours</div>
-      </div>
-      <div style="min-width:74px;padding:10px 12px;border-radius:14px;background:rgba(255,255,255,0.06);">
-        <div style="font-size:22px;font-weight:800;">${parts.minutes}</div><div style="font-size:12px;opacity:.8;">Minutes</div>
-      </div>
-      <div style="min-width:74px;padding:10px 12px;border-radius:14px;background:rgba(255,255,255,0.06);">
-        <div style="font-size:22px;font-weight:800;">${parts.seconds}</div><div style="font-size:12px;opacity:.8;">Seconds</div>
-      </div>
+    <div style="font-size:14px;opacity:.7;">Next milestone completion</div>
+    <div style="font-size:24px;font-weight:800;margin:10px 0;">${escapeHtml(next.title)}</div>
+    <div style="display:flex;justify-content:center;flex-wrap:wrap;gap:8px;">
+      ${Object.entries(parts).map(([unit,val]) => `<div style="min-width:70px;"><span style="font-size:24px;">${val}</span><br>${unit}</div>`).join('')}
     </div>
-    <div style="font-size:13px;opacity:.75;">${next.start.toDateString()} → ${next.end.toDateString()}</div>
-    <div style="margin-top:8px;font-size:12px;opacity:.65;">Tap again to go back.</div>
+    <div style="margin-top:15px;">${next.start.toLocaleString()} → ${next.end.toLocaleString()}</div>
+    <div style="margin-top:10px;font-size:13px;">Tap again to go back</div>
   `;
 }
 
 function toggleMilestoneView() {
   if (!milestones.length) return;
-
-  const next = getNextMilestone(new Date());
-  if (!next) return;
-
   const view = ensureMilestoneView();
   showingMilestoneView = !showingMilestoneView;
-
   if (showingMilestoneView) {
     countdownDisplay.style.display = 'none';
     view.style.display = 'block';
-    updateMilestoneView(new Date());
+    updateMilestoneView();
   } else {
     view.style.display = 'none';
     countdownDisplay.style.display = 'flex';
   }
 }
 
+// ======================== COUNTDOWN UPDATE (PROGRESS BAR FILLS HERE) ========================
 function updateCountdown(start, end) {
   const now = new Date();
   let diff = end - now;
@@ -392,194 +317,78 @@ function updateCountdown(start, end) {
   if (diff <= 0) {
     diff = 0;
     clearInterval(countdownInterval);
-
     deadlineMessage.textContent = "⏳ Time's Up!";
     deadlineMessage.style.display = 'block';
-    countdownDisplay.style.opacity = '0.35';
+    countdownDisplay.style.opacity = '0.4';
     progressFill.style.width = '100%';
     runner.style.left = '100%';
-    runner.style.animation = 'runnerBounce 0.7s ease-in-out infinite alternate';
+    runner.style.animation = 'runnerBounce 0.7s infinite alternate';
     return;
   }
 
   deadlineMessage.style.display = 'none';
   countdownDisplay.style.opacity = '1';
 
-  const { years, months, weeks, days, hours, minutes, seconds } = getTimeParts(diff);
+  const parts = getTimeParts(diff);
+  animateValue(yearsSpan, parts.years);
+  animateValue(monthsSpan, parts.months);
+  animateValue(weeksSpan, parts.weeks);
+  animateValue(daysSpan, parts.days);
+  animateValue(hoursSpan, parts.hours);
+  animateValue(minutesSpan, parts.minutes);
+  animateValue(secondsSpan, parts.seconds);
 
-  animateValue(yearsSpan, years);
-  animateValue(monthsSpan, months);
-  animateValue(weeksSpan, weeks);
-  animateValue(daysSpan, days);
-  animateValue(hoursSpan, hours);
-  animateValue(minutesSpan, minutes);
-  animateValue(secondsSpan, seconds);
+  // Danger class if less than 24h
+  const danger = diff < 86400000;
+  document.querySelectorAll('#countdown div').forEach(d => d.classList.toggle('danger', danger));
 
-  if (diff < 86400000) {
-    document.querySelectorAll('#countdown div').forEach((d) => d.classList.add('danger'));
-  } else {
-    document.querySelectorAll('#countdown div').forEach((d) => d.classList.remove('danger'));
-  }
-
-  const totalDuration = end - start;
+  // Progress calculation (elapsed / total)
+  const total = end - start;
   const elapsed = now - start;
-
-  let progress = (elapsed / totalDuration) * 100;
-  progress = Math.max(0, Math.min(100, progress));
+  let progress = (elapsed / total) * 100;
+  progress = Math.min(100, Math.max(0, progress));
 
   progressFill.style.width = progress + '%';
   runner.style.left = progress + '%';
-  runner.style.transition = 'left 0.8s linear';
-  runner.style.animation = 'runnerBounce 0.7s ease-in-out infinite alternate';
+  runner.style.transition = 'left 0.8s cubic-bezier(0.2,0.9,0.4,1)';
+  runner.style.animation = 'runnerBounce 0.7s infinite alternate';
 
-  if (showingMilestoneView) {
-    updateMilestoneView(now);
-  }
+  if (showingMilestoneView) updateMilestoneView(now);
 }
 
-function applyToolsVisibility(hidden) {
-  [addMsBtn, viewMsBtn].forEach(btn => {
-    if (btn) btn.style.display = hidden ? 'none' : 'inline-block';
-  });
-
-  if (toggleToolsBtn) {
-    toggleToolsBtn.textContent = hidden ? "Show Tools" : "Hide Tools";
-  }
-}
-
-function showMilestoneList() {
-  const overlay = document.createElement('div');
-
-  Object.assign(overlay.style, {
-    position: 'fixed',
-    inset: '0',
-    background: 'rgba(0,0,0,0.7)',
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: '9999'
-  });
-
-  const panel = document.createElement('div');
-
-  Object.assign(panel.style, {
-    background: '#222',
-    padding: '20px',
-    borderRadius: '15px',
-    width: '320px',
-    maxHeight: '420px',
-    overflowY: 'auto',
-    position: 'relative',
-    textAlign: 'left'
-  });
-
-  const closeBtn = document.createElement('span');
-  closeBtn.textContent = '✖';
-  Object.assign(closeBtn.style, {
-    position: 'absolute',
-    top: '10px',
-    right: '15px',
-    cursor: 'pointer',
-    fontSize: '18px'
-  });
-  closeBtn.addEventListener('click', () => overlay.remove());
-
-  const title = document.createElement('h3');
-  title.textContent = 'Milestones';
-
-  panel.appendChild(closeBtn);
-  panel.appendChild(title);
-
-  if (milestones.length === 0) {
-    const empty = document.createElement('p');
-    empty.textContent = 'No milestones yet';
-    panel.appendChild(empty);
-  } else {
-    milestones.forEach((ms, index) => {
-      const item = document.createElement('div');
-      Object.assign(item.style, {
-        marginBottom: '10px',
-        padding: '10px 10px 42px',
-        background: '#333',
-        borderRadius: '10px',
-        position: 'relative'
-      });
-
-      item.innerHTML = `
-        <strong>${escapeHtml(ms.title)}</strong><br>
-        <small>${ms.start.toDateString()} → ${ms.end.toDateString()}</small><br>
-        <button class="ms-delete-btn" data-del="${index}">Delete</button>
-      `;
-
-      panel.appendChild(item);
-    });
-
-    panel.querySelectorAll('[data-del]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const index = Number(btn.getAttribute('data-del'));
-        milestones.splice(index, 1);
-        renderMilestones();
-        saveCurrentState();
-        overlay.remove();
-        showMilestoneList();
-      });
-    });
-  }
-
-  overlay.appendChild(panel);
-  document.body.appendChild(overlay);
-
-  overlay.addEventListener('click', (e) => {
-    if (e.target === overlay) overlay.remove();
-  });
-}
-
+// ======================== MAIN ACTIONS ========================
 function startCounter() {
   const startDate = new Date(startInput.value);
   const endDate = new Date(endInput.value);
 
-  if (!startInput.value || !endInput.value) {
-    alert('Please enter dates!');
-    return;
-  }
+  if (!startInput.value || !endInput.value) return alert('Please set start and end times.');
+  if (isNaN(startDate) || isNaN(endDate)) return alert('Invalid date/time.');
+  if (endDate <= startDate) return alert('End must be after start.');
 
-  if (isNaN(startDate) || isNaN(endDate)) {
-    alert('Invalid dates!');
-    return;
-  }
+  // Save accent color
+  currentAccentColor = accentColorInput.value;
+  applyAccentColor(currentAccentColor);
 
   inputSection.style.display = 'none';
   counterSection.style.display = 'block';
-
   showingMilestoneView = false;
-
-  const milestoneView = ensureMilestoneView();
-  milestoneView.style.display = 'none';
-
-  const deadlineMessage = ensureDeadlineMessage();
-  deadlineMessage.style.display = 'none';
-
+  ensureMilestoneView().style.display = 'none';
+  ensureDeadlineMessage().style.display = 'none';
   countdownDisplay.style.display = 'flex';
-  countdownDisplay.style.opacity = '1';
 
+  // Title & Quote display
   const title = titleInput.value.trim();
-  if (title === '') {
-    displayTitle.style.display = 'none';
-    displayTitle.dataset.raw = '';
-  } else {
-    displayTitle.style.display = 'block';
-    displayTitle.textContent = title;
-    displayTitle.dataset.raw = title;
-  }
+  displayTitle.textContent = title || 'Untitled Event';
+  displayTitle.dataset.raw = title;
+  displayTitle.style.display = 'block';
 
   const quote = quoteInput.value.trim();
-  if (quote === '') {
-    displayQuote.style.display = 'none';
-    displayQuote.dataset.raw = '';
-  } else {
-    displayQuote.style.display = 'block';
-    displayQuote.textContent = `“ ${quote} ”`;
+  if (quote) {
+    displayQuote.textContent = `“${quote}”`;
     displayQuote.dataset.raw = quote;
+    displayQuote.style.display = 'block';
+  } else {
+    displayQuote.style.display = 'none';
   }
 
   bindEditableTitle();
@@ -588,85 +397,102 @@ function startCounter() {
   renderStartEndFlags();
   renderMilestones();
 
-  saveCurrentState();
-
+  // Reset runner and progress
   runner.style.left = '0%';
   progressFill.style.width = '0%';
 
-  updateCountdown(startDate, endDate);
+  saveCurrentState();
 
+  updateCountdown(startDate, endDate);
   clearInterval(countdownInterval);
-  countdownInterval = setInterval(() => {
-    updateCountdown(startDate, endDate);
-  }, 1000);
+  countdownInterval = setInterval(() => updateCountdown(startDate, endDate), 1000);
 }
 
-// ---------- FIXED: Reset without destroying countdown structure ----------
 function resetCounter() {
   clearInterval(countdownInterval);
-
   inputSection.style.display = 'block';
   counterSection.style.display = 'none';
-
+  // Clear inputs
+  titleInput.value = '';
+  quoteInput.value = '';
   startInput.value = '';
   endInput.value = '';
-  quoteInput.value = '';
-  titleInput.value = '';
-
-  displayTitle.textContent = '';
-  displayTitle.dataset.raw = '';
-  displayTitle.style.display = 'none';
-
-  displayQuote.textContent = '';
-  displayQuote.dataset.raw = '';
-  displayQuote.style.display = 'none';
-
   milestones = [];
   showingMilestoneView = false;
 
   document.querySelectorAll('.flag-start, .flag-end, .ms-pin').forEach(el => el.remove());
+  const mv = document.getElementById('milestone-view');
+  if (mv) { mv.style.display = 'none'; mv.innerHTML = ''; }
+  const dm = document.getElementById('deadline-message');
+  if (dm) { dm.style.display = 'none'; }
 
-  const milestoneView = document.getElementById('milestone-view');
-  if (milestoneView) {
-    milestoneView.style.display = 'none';
-    milestoneView.innerHTML = '';
-  }
-
-  const deadlineMessage = document.getElementById('deadline-message');
-  if (deadlineMessage) {
-    deadlineMessage.style.display = 'none';
-    deadlineMessage.innerHTML = '';
-  }
-
-  // Reset countdown values (keep DOM references alive)
-  yearsSpan.textContent = '0';
-  monthsSpan.textContent = '0';
-  weeksSpan.textContent = '0';
-  daysSpan.textContent = '0';
-  hoursSpan.textContent = '0';
-  minutesSpan.textContent = '0';
-  secondsSpan.textContent = '0';
-
+  // Reset countdown spans
+  yearsSpan.textContent = monthsSpan.textContent = weeksSpan.textContent = daysSpan.textContent = hoursSpan.textContent = minutesSpan.textContent = secondsSpan.textContent = '0';
   progressFill.style.width = '0%';
   runner.style.left = '0%';
 
   saveCurrentState();
 }
 
-function initFromSavedWidget() {
-  const savedWidget = getCurrentWidget();
+// Editable title/quote on click
+function bindEditableTitle() {
+  displayTitle.onclick = () => {
+    const newTitle = prompt('Edit title:', displayTitle.dataset.raw || '');
+    if (newTitle !== null) {
+      displayTitle.textContent = newTitle.trim() || 'Untitled Event';
+      displayTitle.dataset.raw = newTitle.trim();
+      titleInput.value = newTitle.trim();
+      saveCurrentState();
+    }
+  };
+}
+function bindEditableQuote() {
+  displayQuote.onclick = () => {
+    const newQuote = prompt('Edit quote:', displayQuote.dataset.raw || '');
+    if (newQuote !== null) {
+      const trimmed = newQuote.trim();
+      displayQuote.textContent = trimmed ? `“${trimmed}”` : '';
+      displayQuote.dataset.raw = trimmed;
+      quoteInput.value = trimmed;
+      displayQuote.style.display = trimmed ? 'block' : 'none';
+      saveCurrentState();
+    }
+  };
+}
 
-  if (savedWidget) {
-    titleInput.value = savedWidget.title || '';
-    quoteInput.value = savedWidget.quote || '';
-    startInput.value = savedWidget.startDate || '';
-    endInput.value = savedWidget.endDate || '';
-    milestones = deserializeMilestones(savedWidget.milestones || []);
+function saveCurrentState() {
+  saveCurrentWidget({
+    title: titleInput.value.trim(),
+    quote: quoteInput.value.trim(),
+    startDate: startInput.value,
+    endDate: endInput.value,
+    milestones: serializeMilestones(milestones),
+    accentColor: currentAccentColor
+  });
+}
+
+// ======================== INITIALIZATION & EVENT LISTENERS ========================
+function initFromSavedWidget() {
+  const saved = getCurrentWidget();
+  if (saved) {
+    titleInput.value = saved.title || '';
+    quoteInput.value = saved.quote || '';
+    startInput.value = saved.startDate || '';
+    endInput.value = saved.endDate || '';
+    milestones = deserializeMilestones(saved.milestones || []);
+    if (saved.accentColor) {
+      accentColorInput.value = saved.accentColor;
+      applyAccentColor(saved.accentColor);
+    } else {
+      applyAccentColor('#ff6a00');
+    }
+  } else {
+    applyAccentColor('#ff6a00');
   }
 
   applyToolsVisibility(localStorage.getItem("date_counter_tools_hidden") === "true");
 
-  if (savedWidget && savedWidget.startDate && savedWidget.endDate) {
+  if (saved && saved.startDate && saved.endDate) {
     startCounter();
   } else {
     inputSection.style.display = 'block';
@@ -674,78 +500,51 @@ function initFromSavedWidget() {
   }
 }
 
-// ---------- Initialization ----------
-injectRunnerAnimationStyle();
-initFromSavedWidget();
+function applyToolsVisibility(hidden) {
+  [addMsBtn, viewMsBtn].forEach(btn => { if(btn) btn.style.display = hidden ? 'none' : 'inline-block'; });
+  if (toggleToolsBtn) toggleToolsBtn.textContent = hidden ? "👁️ Show Tools" : "👁️ Hide Tools";
+}
 
-// ---------- Event Listeners ----------
+// Color picker event
+accentColorInput.addEventListener('input', (e) => {
+  applyAccentColor(e.target.value);
+  saveCurrentState();
+});
+
+// Start / Reset
 startBtn.addEventListener('click', startCounter);
-
-if (resetBtn) {
-  resetBtn.addEventListener('click', resetCounter);
-}
-
-if (toggleToolsBtn) {
-  toggleToolsBtn.addEventListener('click', () => {
-    const hidden = !(localStorage.getItem("date_counter_tools_hidden") === "true");
-    localStorage.setItem("date_counter_tools_hidden", String(hidden));
-    applyToolsVisibility(hidden);
-  });
-}
-
-if (viewMsBtn) {
-  viewMsBtn.addEventListener('click', showMilestoneList);
-}
-
-if (addMsBtn && modal && closeModal && msTitle && msStart && msEnd && msSave) {
-  addMsBtn.addEventListener('click', () => {
-    modal.style.display = 'flex';
-  });
-
-  closeModal.addEventListener('click', () => {
-    modal.style.display = 'none';
-  });
-
-  window.addEventListener('click', (e) => {
-    if (e.target === modal) modal.style.display = 'none';
-  });
-
-  msSave.addEventListener('click', () => {
-    const title = msTitle.value.trim();
-    const start = new Date(msStart.value);
-    const end = new Date(msEnd.value);
-    const mainStart = new Date(startInput.value);
-    const mainEnd = new Date(endInput.value);
-
-    if (!title || isNaN(start.getTime()) || isNaN(end.getTime())) {
-      alert('Fill all fields correctly!');
-      return;
-    }
-
-    if (start < mainStart || end > mainEnd || start > end) {
-      alert('Milestone must be within countdown start & end!');
-      return;
-    }
-
-    milestones.push({
-      title,
-      start,
-      end,
-      colors: getRandomMilestonePalette()
-    });
-
-    modal.style.display = 'none';
-    msTitle.value = '';
-    msStart.value = '';
-    msEnd.value = '';
-
-    renderMilestones();
-    saveCurrentState();
-
-    if (showingMilestoneView) {
-      updateMilestoneView(new Date());
-    }
-  });
-}
+resetBtn.addEventListener('click', resetCounter);
+toggleToolsBtn.addEventListener('click', () => {
+  const hidden = !(localStorage.getItem("date_counter_tools_hidden") === "true");
+  localStorage.setItem("date_counter_tools_hidden", hidden);
+  applyToolsVisibility(hidden);
+});
+viewMsBtn.addEventListener('click', () => {
+  // Show list of all milestones in a modal (simplified)
+  alert('Milestone list: ' + milestones.map(m => m.title).join(', ') || 'None');
+});
+// Milestone modal logic
+addMsBtn.addEventListener('click', () => modal.style.display = 'flex');
+closeModal.addEventListener('click', () => modal.style.display = 'none');
+window.addEventListener('click', (e) => { if (e.target === modal) modal.style.display = 'none'; });
+msSave.addEventListener('click', () => {
+  const title = msTitle.value.trim();
+  const start = new Date(msStart.value);
+  const end = new Date(msEnd.value);
+  const mainStart = new Date(startInput.value);
+  const mainEnd = new Date(endInput.value);
+  if (!title || isNaN(start) || isNaN(end)) return alert('Fill all fields.');
+  if (start < mainStart || end > mainEnd || start >= end) return alert('Milestone must be within the main interval.');
+  milestones.push({ title, start, end, colors: getRandomMilestonePalette() });
+  modal.style.display = 'none';
+  msTitle.value = msStart.value = msEnd.value = '';
+  renderMilestones();
+  saveCurrentState();
+  if (showingMilestoneView) updateMilestoneView();
+});
 
 countdownDisplay.addEventListener('click', toggleMilestoneView);
+
+// Start!
+injectRunnerAnimationStyle();
+initFromSavedWidget();
