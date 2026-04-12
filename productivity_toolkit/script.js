@@ -363,70 +363,8 @@ checkLinkBtn.addEventListener('click', () => {
 });
 
 // =============================================
-// FIXED: QR CODE GENERATOR (Robust Loading)
+// QR CODE GENERATOR – Pure API (no library)
 // =============================================
-
-// Helper to dynamically load the QRCode library if missing
-function ensureQRCodeLibrary(callback) {
-  if (typeof QRCode !== 'undefined') {
-    callback();
-    return;
-  }
-  // Alternative global name
-  if (typeof window.qrcode !== 'undefined') {
-    window.QRCode = window.qrcode;
-    callback();
-    return;
-  }
-  // Try to load from CDN
-  const script = document.createElement('script');
-  script.src = 'https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js';
-  script.onload = () => {
-    if (typeof QRCode !== 'undefined') callback();
-    else if (typeof window.qrcode !== 'undefined') {
-      window.QRCode = window.qrcode;
-      callback();
-    } else {
-      callback(new Error('Library failed to initialize'));
-    }
-  };
-  script.onerror = () => callback(new Error('CDN unreachable'));
-  document.head.appendChild(script);
-}
-
-// QR Generation with fallback to API
-function generateQRCode(text, onSuccess, onError) {
-  // Try using library first
-  ensureQRCodeLibrary((err) => {
-    if (!err) {
-      // Library available
-      QRCode.toDataURL(text, { width: 200, margin: 2, errorCorrectionLevel: 'M' }, (err2, url) => {
-        if (err2) {
-          // Library failed, fallback to API
-          fallbackQRAPI(text, onSuccess, onError);
-        } else {
-          // Success with library
-          const img = new Image();
-          img.onload = () => onSuccess(img);
-          img.onerror = () => onError('Image load failed');
-          img.src = url;
-        }
-      });
-    } else {
-      // Library not available, use API
-      fallbackQRAPI(text, onSuccess, onError);
-    }
-  });
-}
-
-function fallbackQRAPI(text, onSuccess, onError) {
-  const apiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(text)}`;
-  const img = new Image();
-  img.crossOrigin = 'Anonymous';
-  img.onload = () => onSuccess(img);
-  img.onerror = () => onError('QR API failed');
-  img.src = apiUrl;
-}
 
 generateQrBtn.addEventListener('click', () => {
   const text = qrUrlInput.value.trim();
@@ -435,32 +373,41 @@ generateQrBtn.addEventListener('click', () => {
     return;
   }
 
+  // Show loading
   qrPlaceholder.style.display = 'flex';
   qrPlaceholder.textContent = 'Generating...';
   qrCanvas.style.display = 'none';
   downloadQrBtn.disabled = true;
 
-  const ctx = qrCanvas.getContext('2d');
-  ctx.clearRect(0, 0, qrCanvas.width, qrCanvas.height);
+  // Build API URL
+  const apiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(text)}`;
 
-  generateQRCode(text,
-    (img) => {
-      // Success: draw image to canvas
-      qrCanvas.width = img.width;
-      qrCanvas.height = img.height;
-      ctx.drawImage(img, 0, 0);
-      qrCanvas.style.display = 'block';
-      qrPlaceholder.style.display = 'none';
-      downloadQrBtn.disabled = false;
-    },
-    (errorMsg) => {
-      console.error(errorMsg);
-      qrPlaceholder.textContent = 'QR generation failed. Check console.';
-    }
-  );
+  // Create image to load the QR code
+  const img = new Image();
+  img.crossOrigin = 'Anonymous'; // avoid CORS issues when drawing to canvas
+
+  img.onload = () => {
+    // Draw image to canvas
+    qrCanvas.width = img.width;
+    qrCanvas.height = img.height;
+    const ctx = qrCanvas.getContext('2d');
+    ctx.clearRect(0, 0, qrCanvas.width, qrCanvas.height);
+    ctx.drawImage(img, 0, 0);
+    
+    // Show canvas, hide placeholder
+    qrCanvas.style.display = 'block';
+    qrPlaceholder.style.display = 'none';
+    downloadQrBtn.disabled = false;
+  };
+
+  img.onerror = () => {
+    console.error('Failed to load QR image from API');
+    qrPlaceholder.textContent = 'QR API failed. Try again.';
+  };
+
+  img.src = apiUrl;
 });
 
-// Download remains the same
 downloadQrBtn.addEventListener('click', () => {
   const link = document.createElement('a');
   link.download = 'qrcode.png';
