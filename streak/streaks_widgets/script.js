@@ -1,90 +1,95 @@
 /**
- * Streak Widget – Customizable & Milestone-Aware
- * Features:
- * - Color & size customization (persisted per widget)
- * - Milestone messages and progress bar up to 365 days
- * - Special confetti celebration at 365 days
- * - Inline title editing
+ * Streak Widget – Ultimate Customizable
+ * - Flip card for last streak info
+ * - Full styling options (background gradient/solid, fonts, colors)
+ * - Three-dot menu with settings & reset
+ * - Plus confetti, minus shake effect
+ * - Editable emoji and title
  */
 
+// =============================================
+// GLOBALS & STORAGE
+// =============================================
 const WIDGET_LIST_KEY = "streak_widget_list";
-const CUSTOMIZATION_KEY_PREFIX = "streak_custom_";
+const CUSTOM_KEY_PREFIX = "streak_custom_";
+const LAST_STREAK_KEY_PREFIX = "streak_last_";
+
+let widgetId = null;
+let currentCount = 0;
+let hasReached365 = false;
 
 // DOM Elements
 const widgetContainer = document.getElementById('widgetContainer');
 const widgetTitleEl = document.getElementById('widget-title');
+const widgetEmoji = document.getElementById('widgetEmoji');
 const counterEl = document.getElementById('counter');
 const statusEl = document.getElementById('status');
 const progressBar = document.getElementById('progress-bar');
 const progressText = document.getElementById('progress-text');
 const increaseBtn = document.getElementById('increase-btn');
 const decreaseBtn = document.getElementById('decrease-btn');
-const resetBtn = document.getElementById('reset-btn');
-const settingsToggle = document.getElementById('settings-toggle');
+const flipContainer = document.getElementById('flipContainer');
+const flipToBack = document.getElementById('flip-to-back');
+const flipToFront = document.getElementById('flip-to-front');
+const menuToggle = document.getElementById('menu-toggle');
+const menuDropdown = document.getElementById('menu-dropdown');
+const menuSettings = document.getElementById('menu-settings');
+const menuReset = document.getElementById('menu-reset');
 const settingsPanel = document.getElementById('settings-panel');
-const colorPicker = document.getElementById('color-picker');
-const accentPicker = document.getElementById('accent-picker');
-const sizeSlider = document.getElementById('size-slider');
-const sizeValue = document.getElementById('size-value');
 const closeSettings = document.getElementById('close-settings');
 
-// State
-let currentCount = 0;
-let widgetId = null;
-let widgetTitle = 'Streak';
-let hasReached365 = false; // to prevent multiple celebrations
+// Customization inputs
+const emojiInput = document.getElementById('emoji-input');
+const fontSelect = document.getElementById('font-select');
+const fontColorPicker = document.getElementById('font-color-picker');
+const bgTypeSelect = document.getElementById('bg-type-select');
+const solidColorItem = document.getElementById('solid-color-item');
+const gradientColorItem = document.getElementById('gradient-color-item');
+const bgColorPicker = document.getElementById('bg-color-picker');
+const gradientStartPicker = document.getElementById('gradient-start-picker');
+const gradientEndPicker = document.getElementById('gradient-end-picker');
+const accentPicker = document.getElementById('accent-picker');
+const counterColorPicker = document.getElementById('counter-color-picker');
+const sizeSlider = document.getElementById('size-slider');
+const sizeValue = document.getElementById('size-value');
+
+// Last streak display
+const lastStreakDate = document.getElementById('last-streak-date');
+const lastStreakTime = document.getElementById('last-streak-time');
 
 // =============================================
-// UTILITIES
+// STORAGE HELPERS
 // =============================================
 function getWidgetList() {
   try { return JSON.parse(localStorage.getItem(WIDGET_LIST_KEY)) || []; }
   catch { return []; }
 }
+function saveWidgetList(list) { localStorage.setItem(WIDGET_LIST_KEY, JSON.stringify(list)); }
+function getWidgetIdFromUrl() { return new URLSearchParams(window.location.search).get('id'); }
+function getCountKey(id) { return `streak_count_${id}`; }
+function getCount(id) { const v = Number(localStorage.getItem(getCountKey(id))); return isFinite(v) ? v : 0; }
+function setCount(id, val) { localStorage.setItem(getCountKey(id), String(val)); }
 
-function saveWidgetList(list) {
-  localStorage.setItem(WIDGET_LIST_KEY, JSON.stringify(list));
+function getLastStreakKey(id) { return `${LAST_STREAK_KEY_PREFIX}${id}`; }
+function getLastStreak(id) {
+  const saved = localStorage.getItem(getLastStreakKey(id));
+  return saved ? JSON.parse(saved) : null;
+}
+function setLastStreak(id, date) {
+  localStorage.setItem(getLastStreakKey(id), JSON.stringify(date));
 }
 
-function getWidgetIdFromUrl() {
-  const params = new URLSearchParams(window.location.search);
-  return params.get('id');
-}
-
-function getCountKey(id) {
-  return `streak_count_${id}`;
-}
-
-function getCount(id) {
-  const raw = localStorage.getItem(getCountKey(id));
-  const value = Number(raw);
-  return Number.isFinite(value) ? value : 0;
-}
-
-function setCount(id, value) {
-  localStorage.setItem(getCountKey(id), String(value));
-}
-
-function getCustomizationKey(id) {
-  return `${CUSTOMIZATION_KEY_PREFIX}${id}`;
-}
-
+function getCustomizationKey(id) { return `${CUSTOM_KEY_PREFIX}${id}`; }
 function loadCustomization(id) {
   const saved = localStorage.getItem(getCustomizationKey(id));
-  if (saved) {
-    try {
-      return JSON.parse(saved);
-    } catch { return {}; }
-  }
-  return {};
+  return saved ? JSON.parse(saved) : {};
 }
-
 function saveCustomization(id, settings) {
   localStorage.setItem(getCustomizationKey(id), JSON.stringify(settings));
 }
 
 // =============================================
-// MILESTONE MESSAGES (up to 365)
+// MILESTONE MESSAGES (same as before)
 // =============================================
 function getMilestoneMessage(count) {
   if (count === 0) return { text: 'Start your streak 🚀', color: '#888' };
@@ -113,75 +118,110 @@ function getMilestoneMessage(count) {
 // UPDATE UI
 // =============================================
 function updateUI() {
-  // Counter
   counterEl.textContent = currentCount;
-  
-  // Progress bar (capped at 365)
   const progressPercent = Math.min((currentCount / 365) * 100, 100);
   progressBar.style.width = `${progressPercent}%`;
   progressText.textContent = `${currentCount}/365`;
-  
-  // Milestone message
+
   const milestone = getMilestoneMessage(currentCount);
   statusEl.textContent = milestone.text;
   statusEl.style.color = milestone.color;
-  
-  // Special celebration at 365
+
   if (currentCount === 365 && !hasReached365) {
     hasReached365 = true;
     celebrate365();
   }
   if (currentCount < 365) hasReached365 = false;
-  
-  // Counter pop animation
+
   counterEl.classList.add('counter-pop');
   setTimeout(() => counterEl.classList.remove('counter-pop'), 300);
-  
-  // Save count
+
   if (widgetId) setCount(widgetId, currentCount);
 }
 
 function celebrate365() {
-  // Confetti blast
   confetti({ particleCount: 150, spread: 100, origin: { y: 0.6 } });
   confetti({ particleCount: 150, spread: 120, origin: { y: 0.6, x: 0.2 }, colors: ['#ffd700', '#ff6a00'] });
   confetti({ particleCount: 150, spread: 120, origin: { y: 0.6, x: 0.8 }, colors: ['#ffd700', '#ee0979'] });
-  setTimeout(() => {
-    confetti({ particleCount: 200, spread: 150, origin: { y: 0.5 } });
-  }, 200);
-  
-  // Extra message
-  statusEl.textContent = '🎊 CONGRATULATIONS! ONE FULL YEAR! 🎊';
+  setTimeout(() => confetti({ particleCount: 200, spread: 150, origin: { y: 0.5 } }), 200);
 }
 
 // =============================================
 // APPLY CUSTOMIZATION
 // =============================================
 function applyCustomization(settings) {
-  // Counter color
-  if (settings.counterColor) {
-    document.documentElement.style.setProperty('--counter-color', settings.counterColor);
-    colorPicker.value = settings.counterColor;
+  // Emoji
+  if (settings.emoji) widgetEmoji.textContent = settings.emoji;
+  // Font family
+  if (settings.fontFamily) {
+    document.documentElement.style.setProperty('--font-family', settings.fontFamily);
+    fontSelect.value = settings.fontFamily;
   }
-  // Accent color
+  // Text color
+  if (settings.fontColor) {
+    document.documentElement.style.setProperty('--text-primary', settings.fontColor);
+    fontColorPicker.value = settings.fontColor;
+  }
+  // Background
+  if (settings.bgType === 'gradient') {
+    const start = settings.gradientStart || '#1f1f1f';
+    const end = settings.gradientEnd || '#2a2a2a';
+    widgetContainer.style.background = `linear-gradient(135deg, ${start}, ${end})`;
+    document.querySelector('.back-container').style.background = `linear-gradient(135deg, ${start}, ${end})`;
+  } else {
+    const bg = settings.bgColor || '#1f1f1f';
+    widgetContainer.style.background = bg;
+    document.querySelector('.back-container').style.background = bg;
+  }
+  // Accent
   if (settings.accentColor) {
     document.documentElement.style.setProperty('--accent-color', settings.accentColor);
     accentPicker.value = settings.accentColor;
+  }
+  // Counter color
+  if (settings.counterColor) {
+    document.documentElement.style.setProperty('--counter-color', settings.counterColor);
+    counterColorPicker.value = settings.counterColor;
   }
   // Size
   if (settings.widgetSize) {
     const scale = settings.widgetSize / 100;
     widgetContainer.style.transform = `scale(${scale})`;
+    document.querySelector('.back-container').style.transform = `scale(${scale})`;
     sizeSlider.value = settings.widgetSize;
     sizeValue.textContent = settings.widgetSize;
+  }
+  // Update picker states
+  bgTypeSelect.value = settings.bgType || 'solid';
+  toggleBgInputs();
+  if (settings.bgColor) bgColorPicker.value = settings.bgColor;
+  if (settings.gradientStart) gradientStartPicker.value = settings.gradientStart;
+  if (settings.gradientEnd) gradientEndPicker.value = settings.gradientEnd;
+  emojiInput.value = settings.emoji || '🔥';
+}
+
+function toggleBgInputs() {
+  if (bgTypeSelect.value === 'gradient') {
+    solidColorItem.classList.add('hidden');
+    gradientColorItem.classList.remove('hidden');
+  } else {
+    solidColorItem.classList.remove('hidden');
+    gradientColorItem.classList.add('hidden');
   }
 }
 
 function saveCurrentCustomization() {
   if (!widgetId) return;
   const settings = {
-    counterColor: colorPicker.value,
+    emoji: emojiInput.value || '🔥',
+    fontFamily: fontSelect.value,
+    fontColor: fontColorPicker.value,
+    bgType: bgTypeSelect.value,
+    bgColor: bgColorPicker.value,
+    gradientStart: gradientStartPicker.value,
+    gradientEnd: gradientEndPicker.value,
     accentColor: accentPicker.value,
+    counterColor: counterColorPicker.value,
     widgetSize: parseInt(sizeSlider.value)
   };
   saveCustomization(widgetId, settings);
@@ -191,23 +231,63 @@ function saveCurrentCustomization() {
 // =============================================
 // EVENT LISTENERS
 // =============================================
+// Increase
 increaseBtn.addEventListener('click', () => {
   currentCount++;
+  const now = new Date();
+  setLastStreak(widgetId, now.toISOString());
   updateUI();
+  // Confetti cheer
+  confetti({ particleCount: 30, spread: 50, origin: { y: 0.7 } });
 });
 
+// Decrease with shake
 decreaseBtn.addEventListener('click', () => {
   if (currentCount > 0) {
     currentCount--;
     updateUI();
+    widgetContainer.classList.add('shake');
+    setTimeout(() => widgetContainer.classList.remove('shake'), 300);
   }
 });
 
-resetBtn.addEventListener('click', () => {
+// Flip
+flipToBack.addEventListener('click', () => {
+  flipContainer.classList.add('flipped');
+  updateLastStreakDisplay();
+});
+flipToFront.addEventListener('click', () => flipContainer.classList.remove('flipped'));
+
+function updateLastStreakDisplay() {
+  const last = getLastStreak(widgetId);
+  if (last) {
+    const d = new Date(last);
+    lastStreakDate.textContent = d.toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
+    lastStreakTime.textContent = d.toLocaleTimeString();
+  } else {
+    lastStreakDate.textContent = 'Never';
+    lastStreakTime.textContent = '';
+  }
+}
+
+// Menu
+menuToggle.addEventListener('click', (e) => {
+  e.stopPropagation();
+  menuDropdown.classList.toggle('hidden');
+});
+document.addEventListener('click', () => menuDropdown.classList.add('hidden'));
+
+menuSettings.addEventListener('click', () => {
+  settingsPanel.classList.remove('hidden');
+  menuDropdown.classList.add('hidden');
+});
+
+menuReset.addEventListener('click', () => {
   if (confirm('Reset streak to 0?')) {
     currentCount = 0;
     updateUI();
   }
+  menuDropdown.classList.add('hidden');
 });
 
 // Title editing
@@ -216,88 +296,67 @@ widgetTitleEl.addEventListener('click', () => {
   const widgets = getWidgetList();
   const widget = widgets.find(w => w.id === widgetId);
   if (!widget) return;
-  
   const newTitle = prompt('Edit widget title:', widget.title);
-  if (!newTitle || !newTitle.trim()) return;
-  
-  widget.title = newTitle.trim();
-  saveWidgetList(widgets);
-  widgetTitleEl.textContent = `🔥 ${widget.title}`;
-  widgetTitle = widget.title;
+  if (newTitle?.trim()) {
+    widget.title = newTitle.trim();
+    saveWidgetList(widgets);
+    widgetTitleEl.textContent = widget.title;
+  }
 });
 
-// Settings panel toggle
-settingsToggle.addEventListener('click', () => {
-  settingsPanel.classList.toggle('hidden');
+// Emoji editing (click)
+widgetEmoji.addEventListener('click', () => {
+  const newEmoji = prompt('Enter an emoji:', widgetEmoji.textContent);
+  if (newEmoji) {
+    widgetEmoji.textContent = newEmoji;
+    saveCurrentCustomization();
+  }
 });
 
+// Settings panel
 closeSettings.addEventListener('click', () => {
   settingsPanel.classList.add('hidden');
   saveCurrentCustomization();
 });
 
-// Real-time customization preview
-colorPicker.addEventListener('input', () => {
-  document.documentElement.style.setProperty('--counter-color', colorPicker.value);
-});
-accentPicker.addEventListener('input', () => {
-  document.documentElement.style.setProperty('--accent-color', accentPicker.value);
-});
-sizeSlider.addEventListener('input', () => {
-  const val = sizeSlider.value;
-  sizeValue.textContent = val;
-  widgetContainer.style.transform = `scale(${val / 100})`;
-});
-
-// Save on change (debounced)
-[colorPicker, accentPicker, sizeSlider].forEach(el => {
+bgTypeSelect.addEventListener('change', toggleBgInputs);
+sizeSlider.addEventListener('input', () => sizeValue.textContent = sizeSlider.value);
+[fontSelect, fontColorPicker, bgColorPicker, gradientStartPicker, gradientEndPicker, accentPicker, counterColorPicker].forEach(el => {
+  el.addEventListener('input', () => {
+    // Live preview
+    if (el === fontSelect) document.documentElement.style.setProperty('--font-family', el.value);
+    if (el === fontColorPicker) document.documentElement.style.setProperty('--text-primary', el.value);
+    if (el === accentPicker) document.documentElement.style.setProperty('--accent-color', el.value);
+    if (el === counterColorPicker) document.documentElement.style.setProperty('--counter-color', el.value);
+  });
   el.addEventListener('change', saveCurrentCustomization);
 });
+sizeSlider.addEventListener('change', saveCurrentCustomization);
+emojiInput.addEventListener('change', saveCurrentCustomization);
 
 // =============================================
-// INITIALIZATION
+// INIT
 // =============================================
 widgetId = getWidgetIdFromUrl();
 
-if (!widgetId) {
-  widgetTitleEl.textContent = '🔥 Streak';
-  statusEl.textContent = 'No widget selected.';
-  counterEl.textContent = '—';
-} else {
+if (widgetId) {
   const widgets = getWidgetList();
   const widget = widgets.find(w => w.id === widgetId);
-  
   if (widget) {
-    widgetTitle = widget.title;
-    widgetTitleEl.textContent = `🔥 ${widget.title}`;
-  } else {
-    widgetTitleEl.textContent = '🔥 Streak';
+    widgetTitleEl.textContent = widget.title;
   }
-  
-  // Load count
   currentCount = getCount(widgetId);
-  
-  // Load customizations
   const savedSettings = loadCustomization(widgetId);
-  if (Object.keys(savedSettings).length === 0) {
-    // Defaults
-    savedSettings.counterColor = '#ffffff';
-    savedSettings.accentColor = '#ff6a00';
-    savedSettings.widgetSize = 100;
-  }
   applyCustomization(savedSettings);
-  
   updateUI();
+} else {
+  widgetTitleEl.textContent = 'Streak';
+  statusEl.textContent = 'No widget selected.';
 }
 
 // Keyboard shortcuts
 document.addEventListener('keydown', (e) => {
-  if (e.target.tagName === 'INPUT') return;
-  if (e.key === '+' || e.key === '=') {
-    increaseBtn.click();
-  } else if (e.key === '-' || e.key === '_') {
-    decreaseBtn.click();
-  } else if (e.key === 'r' || e.key === 'R') {
-    resetBtn.click();
-  }
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+  if (e.key === '+' || e.key === '=') increaseBtn.click();
+  if (e.key === '-' || e.key === '_') decreaseBtn.click();
 });
