@@ -14,11 +14,11 @@ let currentSessionStart = null;
 let pendingPartialAction = null;
 let pendingPartialElapsed = 0;
 
-// Extra time tracking
+// Extra time tracking (per session accumulation)
 let extraTimeSeconds = 0;
 let extraTimeInterval = null;
 let isExtraTimeRunning = false;
-let extraTimeSessionId = null;
+let extraTimeAccumulated = 0; // accumulates across the current break/work period
 
 let sharedAudioCtx = null;
 
@@ -27,7 +27,6 @@ let halfPomodoros = 0;
 let streakDays = 0;
 let lastActiveDate = null;
 let sessionsHistory = [];
-let extraTimeHistory = []; // separate log for extra time periods
 let tasks = [];
 let activeTaskId = null;
 let showCompleted = true;
@@ -58,7 +57,7 @@ let currentChartTab = 'daily';
 
 function $(id) { return document.getElementById(id); }
 
-// DOM Elements
+// DOM Elements (all with $)
 const timerCanvas = $('timer-canvas');
 const ctx = timerCanvas?.getContext('2d');
 const minutesSpan = $('timer-minutes');
@@ -173,7 +172,6 @@ function loadFromStorage() {
       settings = data.settings || settings;
       tasks = data.tasks || [];
       sessionsHistory = data.sessions || [];
-      extraTimeHistory = data.extraTimeHistory || [];
       todayPomodoros = data.todayPomodoros || 0;
       halfPomodoros = data.halfPomodoros || 0;
       streakDays = data.streakDays || 0;
@@ -189,7 +187,7 @@ function loadFromStorage() {
 }
 
 function saveToStorage() {
-  const data = { settings, tasks, sessions: sessionsHistory, extraTimeHistory, todayPomodoros, halfPomodoros, streakDays, lastActiveDate, activeTaskId };
+  const data = { settings, tasks, sessions: sessionsHistory, todayPomodoros, halfPomodoros, streakDays, lastActiveDate, activeTaskId };
   localStorage.setItem('pomodoro_suite', JSON.stringify(data));
 }
 
@@ -249,11 +247,10 @@ function initAudioContext() {
 }
 
 // ======================== EXTRA TIME (persistent) ========================
-function startExtraTime(sessionId) {
+function startExtraTime() {
   if (!settings.trackExtraTime) return;
-  stopExtraTime();
+  if (extraTimeInterval) clearInterval(extraTimeInterval);
   extraTimeSeconds = 0;
-  extraTimeSessionId = sessionId;
   isExtraTimeRunning = true;
   if (extraTimeContainer) extraTimeContainer.style.display = 'block';
   updateExtraTimeDisplay();
@@ -268,10 +265,12 @@ function stopExtraTime() {
   extraTimeInterval = null;
   isExtraTimeRunning = false;
   if (extraTimeContainer) extraTimeContainer.style.display = 'none';
+  // Accumulate into extraTimeAccumulated
+  extraTimeAccumulated += extraTimeSeconds;
+  extraTimeSeconds = 0;
 }
 
 function pauseExtraTime() {
-  // Pause without resetting display (used when modal opens)
   if (extraTimeInterval) {
     clearInterval(extraTimeInterval);
     extraTimeInterval = null;
@@ -289,31 +288,17 @@ function resumeExtraTime() {
 
 function updateExtraTimeDisplay() {
   if (!extraTimeDisplay) return;
-  const mins = Math.floor(extraTimeSeconds / 60);
-  const secs = extraTimeSeconds % 60;
+  const total = extraTimeAccumulated + extraTimeSeconds;
+  const mins = Math.floor(total / 60);
+  const secs = total % 60;
   extraTimeDisplay.textContent = `${mins}:${String(secs).padStart(2, '0')}`;
 }
 
-function logExtraTimeAndReset() {
-  if (extraTimeSeconds <= 0) return;
-  // Log as separate entry
-  const session = sessionsHistory.find(s => s.id === extraTimeSessionId);
-  const extraEntry = {
-    id: Date.now().toString(),
-    type: 'extra',
-    duration: Math.floor(extraTimeSeconds / 60),
-    timestamp: new Date().toISOString(),
-    associatedSessionId: extraTimeSessionId,
-    taskName: session ? session.taskName : null
-  };
-  extraTimeHistory.push(extraEntry);
-  // Also attach to session for display
-  if (session) {
-    session.extraTime = extraTimeSeconds;
-  }
+function resetExtraTime() {
   stopExtraTime();
-  saveToStorage();
-  renderHistoryList();
+  extraTimeAccumulated = 0;
+  extraTimeSeconds = 0;
+  updateExtraTimeDisplay();
 }
 
 // ======================== TIMER ========================
@@ -362,7 +347,7 @@ function timerTick() {
 
 function startTimer() {
   if (isRunning) return;
-  logExtraTimeAndReset(); // log any accumulated extra time before starting
+  resetExtraTime(); // clear extra time when timer starts
   isRunning = true;
   if (startPauseBtn) startPauseBtn.textContent = 'Pause';
   if (logPartialContainer) logPartialContainer.style.display = 'none';
@@ -403,7 +388,7 @@ function stopTimer() {
 
 function resetTimer() {
   stopTimer();
-  logExtraTimeAndReset();
+  resetExtraTime();
   timeLeft = (currentSessionType === 'work' ? settings.workDuration : currentSessionType === 'shortBreak' ? settings.shortBreak : settings.longBreak) * 60;
   totalSessionTime = timeLeft;
   updateTimerDisplay();
@@ -447,13 +432,14 @@ function showPartialOptions() {
   partialOptionsModal.style.display = 'flex';
 }
 
-function promptPartialTaskApplication(action, elapsed, isRemaining = false) {
+function promptPartialTaskApplication(action, elapsed, callback) {
   pendingPartialAction = action;
   pendingPartialElapsed = elapsed;
-  if (activeTaskId && !isRemaining) {
+  if (activeTaskId) {
     if (partialTaskModal) partialTaskModal.style.display = 'flex';
+    window._partialCallback = callback;
   } else {
-    applyPartialToTask('none');
+    callback('none');
   }
 }
 
@@ -474,68 +460,69 @@ function applyPartialToTask(option) {
   saveToStorage();
   renderTasks();
   if (partialTaskModal) partialTaskModal.style.display = 'none';
-  
-  if (pendingPartialAction === 'reset') {
-    logPartialSessionAndReset();
-  } else if (pendingPartialAction === 'complete') {
-    setupPartialCompleteMode();
-  } else if (pendingPartialAction === 'assign-remaining') {
-    // Handled in completeSession flow
-    pendingPartialAction = null;
+  if (window._partialCallback) {
+    window._partialCallback(option);
+    window._partialCallback = null;
   }
 }
 
-function logElapsedPortion() {
-  const elapsed = pendingPartialElapsed || (totalSessionTime - timeLeft);
+function logElapsedPortion(elapsed, isHalf = true) {
   if (elapsed <= 0) return;
   const activeTask = activeTaskId ? tasks.find(t => t.id === activeTaskId) : null;
-  const sessionId = Date.now().toString();
   const session = {
-    id: sessionId,
+    id: Date.now().toString(),
     type: currentSessionType,
     duration: Math.floor(elapsed / 60),
     timestamp: new Date().toISOString(),
     taskName: (currentSessionType === 'work' && activeTask) ? activeTask.title : null,
     interruptions: [],
     partial: true,
-    halfPomodoro: true
+    halfPomodoro: isHalf
   };
   sessionsHistory.push(session);
   if (currentSessionType === 'work') halfPomodoros++;
   saveToStorage();
   renderHistoryList();
   updateQuickStats();
-  return sessionId;
 }
 
 function logPartialSessionAndReset() {
-  logElapsedPortion();
-  timeLeft = totalSessionTime;
-  updateTimerDisplay();
-  drawTimer(1);
-  if (logPartialContainer) logPartialContainer.style.display = 'none';
-  if (partialOptionsModal) partialOptionsModal.style.display = 'none';
-  pendingInterruption = false;
-  if (startPauseBtn) startPauseBtn.textContent = 'Start';
-  currentSessionStart = null;
-  partialMode = null;
-  partialElapsedLogged = false;
-  pendingPartialAction = null;
+  const elapsed = totalSessionTime - timeLeft;
+  promptPartialTaskApplication('reset', elapsed, (option) => {
+    logElapsedPortion(elapsed, true);
+    timeLeft = totalSessionTime;
+    updateTimerDisplay();
+    drawTimer(1);
+    if (logPartialContainer) logPartialContainer.style.display = 'none';
+    if (partialOptionsModal) partialOptionsModal.style.display = 'none';
+    pendingInterruption = false;
+    if (startPauseBtn) startPauseBtn.textContent = 'Start';
+    currentSessionStart = null;
+    partialMode = null;
+    partialElapsedLogged = false;
+  });
 }
 
 function setupPartialCompleteMode() {
-  logElapsedPortion();
-  partialElapsedLogged = true;
-  partialMode = 'complete';
-  if (partialOptionsModal) partialOptionsModal.style.display = 'none';
-  startTimer();
-  pendingPartialAction = null;
+  const elapsed = totalSessionTime - timeLeft;
+  promptPartialTaskApplication('complete', elapsed, (option) => {
+    // Log elapsed portion
+    logElapsedPortion(elapsed, true);
+    partialElapsedLogged = true;
+    partialMode = 'complete';
+    if (partialOptionsModal) partialOptionsModal.style.display = 'none';
+    startTimer();
+  });
 }
 
 function completeSession(isSkipped = false) {
   stopTimer();
   const sessionEndTime = new Date();
   
+  // Attach accumulated extra time to this session
+  const extra = extraTimeAccumulated + extraTimeSeconds;
+  resetExtraTime();
+
   if (settings.sound !== 'none') playSound(settings.sound);
   if (settings.desktopNotify && Notification.permission === 'granted') {
     new Notification(`Pomodoro Suite`, { body: `${currentSessionType} session completed!` });
@@ -548,22 +535,22 @@ function completeSession(isSkipped = false) {
   const activeTask = activeTaskId ? tasks.find(t => t.id === activeTaskId) : null;
   const shouldLog = !isSkipped || settings.logSkipped;
 
-  let sessionId = null;
   let isHalf = false;
   if (partialMode === 'complete' && partialElapsedLogged) {
     isHalf = true;
     const remaining = timeLeft;
     if (remaining > 0) {
-      sessionId = Date.now().toString();
+      // Log remaining portion as half
       const remainingSession = {
-        id: sessionId,
+        id: Date.now().toString(),
         type: currentSessionType,
         duration: Math.floor(remaining / 60),
         timestamp: sessionEndTime.toISOString(),
         taskName: (currentSessionType === 'work' && activeTask) ? activeTask.title : null,
         interruptions: [],
         partial: true,
-        halfPomodoro: true
+        halfPomodoro: true,
+        extraTime: 0
       };
       sessionsHistory.push(remainingSession);
       if (currentSessionType === 'work') halfPomodoros++;
@@ -572,26 +559,25 @@ function completeSession(isSkipped = false) {
       if (activeTask) {
         pendingPartialAction = 'assign-remaining';
         if (partialTaskModal) partialTaskModal.style.display = 'flex';
+        window._pendingRemainingSession = remainingSession;
+        window._pendingRemainingSeconds = remaining;
         saveToStorage();
         renderHistoryList();
         updateQuickStats();
-        // Store a reference to the session to attach option later
-        window._pendingRemainingSession = remainingSession;
-        window._pendingRemainingSeconds = remaining;
         return; // wait for user choice
       }
     }
     partialMode = null;
     partialElapsedLogged = false;
   } else if (shouldLog) {
-    sessionId = Date.now().toString();
     const session = {
-      id: sessionId,
+      id: Date.now().toString(),
       type: currentSessionType,
       duration: totalSessionTime / 60,
       timestamp: sessionEndTime.toISOString(),
       taskName: (currentSessionType === 'work' && activeTask) ? activeTask.title : null,
-      interruptions: []
+      interruptions: [],
+      extraTime: extra
     };
     sessionsHistory.push(session);
   }
@@ -612,7 +598,6 @@ function completeSession(isSkipped = false) {
   finalizeSessionTransition(isSkipped);
 }
 
-// This function is called after user chooses assignment for remaining half
 function applyRemainingTaskOption(option) {
   const activeTask = activeTaskId ? tasks.find(t => t.id === activeTaskId) : null;
   const session = window._pendingRemainingSession;
@@ -671,14 +656,11 @@ function finalizeSessionTransition(isSkipped) {
   partialElapsedLogged = false;
   if (startPauseBtn) startPauseBtn.textContent = 'Start';
 
-  // Start extra time if auto-start off and we finished a work session
-  if (!settings.autoStart && currentSessionType !== 'work' && sessionsHistory.length > 0) {
-    const lastSession = sessionsHistory[sessionsHistory.length - 1];
-    startExtraTime(lastSession.id);
+  // Start extra time counter if auto-start is off
+  if (!settings.autoStart && currentSessionType !== 'work') {
+    startExtraTime();
   } else if (settings.autoStart && !isSkipped) {
     startTimer();
-  } else {
-    stopExtraTime();
   }
 }
 
@@ -724,6 +706,7 @@ function playTaskCompleteSound() {
 }
 
 // ======================== TASKS ========================
+// ... (same as before with showTaskDetail) ...
 function renderTasks() {
   if (!tasksListDiv || !completedTasksDiv) return;
   if (activeTaskId) {
@@ -934,15 +917,7 @@ function updateChart(tab) {
 
 function renderHistoryList() {
   if (!historyListDiv) return;
-  // Combine session and extra time history for display
-  const combined = [...sessionsHistory, ...extraTimeHistory].sort((a,b) => new Date(a.timestamp) - new Date(b.timestamp));
-  historyListDiv.innerHTML = combined.slice(-30).reverse().map((s, idx) => {
-    if (s.type === 'extra') {
-      return `<div class="history-item extra-time-item" data-extra-id="${s.id}">
-        <span>⏱️ Extra time · ${s.duration} min</span>
-        <span>${new Date(s.timestamp).toLocaleString()}</span>
-      </div>`;
-    }
+  historyListDiv.innerHTML = sessionsHistory.slice(-30).reverse().map((s, idx) => {
     const displayType = s.taskName ? s.taskName : s.type;
     const halfMark = s.halfPomodoro ? ' ½' : '';
     const partialMark = s.partial ? ' ⏸️' : '';
@@ -950,7 +925,7 @@ function renderHistoryList() {
     if (s.extraTime) {
       durationText = `${s.duration} min + ${Math.floor(s.extraTime / 60)} min (Extra)`;
     }
-    return `<div class="history-item" data-session-index="${sessionsHistory.indexOf(s)}">
+    return `<div class="history-item" data-session-index="${idx}">
       <span>${displayType} · ${durationText}${halfMark}${partialMark}</span>
       <span>${new Date(s.timestamp).toLocaleString()}</span>
     </div>`;
@@ -994,11 +969,10 @@ function init() {
   updateChart('daily');
   renderHistoryList();
 
-  // Pause extra time when modal opens, resume on close
+  // Pause/resume extra time on modal open/close
   const modals = [settingsModal, taskModal, taskDetailModal, interruptModal, sessionDetailModal, partialOptionsModal, partialTaskModal];
   modals.forEach(m => {
     if (m) {
-      m.addEventListener('show', () => pauseExtraTime()); // not standard, use MutationObserver or just rely on click handlers
       m.addEventListener('click', (e) => {
         if (e.target === m) {
           m.style.display = 'none';
@@ -1007,7 +981,7 @@ function init() {
       });
     }
   });
-  // Simple approach: pause extra time when any modal is displayed via style change
+  // Use MutationObserver to detect style changes
   const observer = new MutationObserver(() => {
     const anyOpen = modals.some(m => m && m.style.display === 'flex');
     if (anyOpen) pauseExtraTime();
@@ -1054,6 +1028,7 @@ function init() {
     saveToStorage();
     if (settingsModal) settingsModal.style.display = 'none';
     updateChart(currentChartTab);
+    // Do NOT reset extra time; it persists
   });
 
   document.querySelectorAll('.close-modal').forEach(btn => btn.addEventListener('click', () => {
@@ -1097,14 +1072,8 @@ function init() {
   };
 
   if (logPartialBtn) logPartialBtn.addEventListener('click', showPartialOptions);
-  if (partialResetOption) partialResetOption.addEventListener('click', () => {
-    const elapsed = totalSessionTime - timeLeft;
-    promptPartialTaskApplication('reset', elapsed);
-  });
-  if (partialCompleteOption) partialCompleteOption.addEventListener('click', () => {
-    const elapsed = totalSessionTime - timeLeft;
-    promptPartialTaskApplication('complete', elapsed);
-  });
+  if (partialResetOption) partialResetOption.addEventListener('click', logPartialSessionAndReset);
+  if (partialCompleteOption) partialCompleteOption.addEventListener('click', setupPartialCompleteMode);
 
   $('partial-half-btn')?.addEventListener('click', () => {
     if (pendingPartialAction === 'assign-remaining') {
@@ -1149,7 +1118,6 @@ function init() {
   if (exportDataBtn) exportDataBtn.addEventListener('click', () => {
     let csv = "Type,Duration,Timestamp,Task,Partial,Half,ExtraTime\n";
     sessionsHistory.forEach(s => csv += `${s.type},${s.duration},${s.timestamp},${s.taskName || ''},${s.partial ? 'Yes' : 'No'},${s.halfPomodoro ? 'Yes' : 'No'},${s.extraTime || 0}\n`);
-    extraTimeHistory.forEach(e => csv += `extra,${e.duration},${e.timestamp},${e.taskName || ''},No,No,0\n`);
     const blob = new Blob([csv], { type: 'text/csv' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
@@ -1160,17 +1128,8 @@ function init() {
   if (historyListDiv) historyListDiv.addEventListener('click', (e) => {
     const item = e.target.closest('.history-item');
     if (item) {
-      if (item.classList.contains('extra-time-item')) {
-        const id = item.dataset.extraId;
-        const extra = extraTimeHistory.find(e => e.id === id);
-        if (extra) {
-          // Show simple detail
-          alert(`Extra time: ${extra.duration} min\n${new Date(extra.timestamp).toLocaleString()}`);
-        }
-      } else {
-        const idx = parseInt(item.dataset.sessionIndex);
-        if (!isNaN(idx) && sessionsHistory[idx]) showSessionDetail(sessionsHistory[idx]);
-      }
+      const idx = parseInt(item.dataset.sessionIndex);
+      if (!isNaN(idx) && sessionsHistory[idx]) showSessionDetail(sessionsHistory[idx]);
     }
   });
 
