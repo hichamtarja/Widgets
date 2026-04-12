@@ -2,24 +2,65 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Streak Widget</title>
   <link rel="stylesheet" href="style.css">
+  <!-- Confetti library for celebration -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1"></script>
 </head>
 <body class="widget-page">
   <a href="../index.html" class="back-btn" title="Back to widgets">←</a>
 
-  <div class="container">
-    <h1 id="widget-title" class="editable-title">🔥 Streak</h1>
-
-    <div id="counter">0</div>
-
-    <div class="buttons">
-      <button onclick="increase()">+</button>
-      <button onclick="decrease()">-</button>
-      <button onclick="reset()">Reset</button>
+  <div class="widget-container" id="widgetContainer">
+    <!-- Header with title and settings toggle -->
+    <div class="widget-header">
+      <h1 id="widget-title" class="editable-title">🔥 Streak</h1>
+      <button id="settings-toggle" class="icon-btn" title="Customize">⚙️</button>
     </div>
 
+    <!-- Main counter display -->
+    <div class="counter-wrapper">
+      <div id="counter">0</div>
+      <div id="streak-label">day streak</div>
+    </div>
+
+    <!-- Milestone progress bar -->
+    <div class="progress-container">
+      <div class="progress-bar" id="progress-bar"></div>
+      <span class="progress-text" id="progress-text">0/365</span>
+    </div>
+
+    <!-- Motivational status message -->
     <p id="status">Start your streak 🚀</p>
+
+    <!-- Control buttons -->
+    <div class="buttons">
+      <button class="streak-btn" id="increase-btn">+1</button>
+      <button class="streak-btn" id="decrease-btn">−1</button>
+      <button class="streak-btn reset-btn" id="reset-btn">↻ Reset</button>
+    </div>
+
+    <!-- Customization panel (hidden by default) -->
+    <div id="settings-panel" class="settings-panel hidden">
+      <h3>Customize Widget</h3>
+      
+      <div class="setting-item">
+        <label for="color-picker">Counter Color</label>
+        <input type="color" id="color-picker" value="#ffffff">
+      </div>
+      
+      <div class="setting-item">
+        <label for="accent-picker">Accent Color</label>
+        <input type="color" id="accent-picker" value="#ff6a00">
+      </div>
+      
+      <div class="setting-item">
+        <label for="size-slider">Widget Size: <span id="size-value">100</span>%</label>
+        <input type="range" id="size-slider" min="50" max="150" value="100" step="5">
+      </div>
+      
+      <button id="close-settings" class="streak-btn">Done</button>
+    </div>
   </div>
 
   <script src="script.js"></script>
