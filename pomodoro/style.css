@@ -1,7 +1,7 @@
-/* ===== LIGHT MODE VARIABLES ===== */
+/* ===== VARIABLES (default red) ===== */
 :root {
-  --accent: #ff6a00;
-  --accent-glow: rgba(255, 106, 0, 0.4);
+  --accent: #e53935;
+  --accent-glow: rgba(229, 57, 53, 0.4);
   --bg-dark: #0b0b0b;
   --bg-card: rgba(20, 20, 20, 0.7);
   --text-primary: #ffffff;
@@ -359,7 +359,7 @@ input[type="range"]::-webkit-slider-thumb {
 .task-item:hover { background: rgba(128,128,128,0.1); }
 .task-item.active {
   border-left: 4px solid var(--accent);
-  background: rgba(255, 106, 0, 0.1);
+  background: rgba(229, 57, 53, 0.1);
 }
 .task-header {
   display: flex;
@@ -555,12 +555,16 @@ select option {
 .fullscreen-overlay {
   position: fixed;
   inset: 0;
-  background: var(--bg-dark);
-  backdrop-filter: blur(10px);
+  background: rgba(10, 10, 10, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 2000;
+}
+body.light-mode .fullscreen-overlay {
+  background: rgba(245, 245, 247, 0.7) !important;
 }
 .overlay-content {
   text-align: center;
@@ -588,7 +592,7 @@ body.focus-mode .timer-section {
   justify-content: center;
 }
 body.focus-mode .timer-card {
-  width: 600px;           /* Wider in focus mode */
+  width: 600px;
   max-width: 90vw;
   transform: scale(1.05);
   transition: all 0.3s;
@@ -625,26 +629,11 @@ body.focus-mode .exit-focus-btn {
   filter: brightness(1.2);
 }
 
-/* Fix blur on overlays */
-.fullscreen-overlay {
-  backdrop-filter: blur(12px) !important;
-  -webkit-backdrop-filter: blur(12px) !important;
-  background: rgba(10, 10, 10, 0.7) !important; /* semi-transparent for blur effect */
-}
-body.light-mode .fullscreen-overlay {
-  background: rgba(245, 245, 247, 0.7) !important;
-}
-
-/* Partial session modal specific */
-#partial-options-modal .modal-content {
-  max-width: 400px;
-}
-
 /* Edit task button */
 .task-edit-btn {
   position: absolute;
   top: 8px;
-  right: 40px;  /* space for delete X */
+  right: 40px;
   width: 24px;
   height: 24px;
   border-radius: 50%;
@@ -667,22 +656,23 @@ body.light-mode .fullscreen-overlay {
   color: white;
 }
 
-/* Completed tasks should not show edit button */
+/* Completed tasks: hide edit button, but allow clicking for details */
 .task-item.completed .task-edit-btn {
   display: none;
 }
 .task-item.completed {
-  pointer-events: none;  /* Prevent selection */
   opacity: 0.7;
 }
 .task-item.completed .task-delete-btn {
-  pointer-events: auto;  /* Allow delete button to work */
+  pointer-events: auto;
 }
 
+/* Half pomodoro dot */
 .pomodoro-dot.half {
   background: linear-gradient(90deg, var(--accent) 50%, #444 50%);
 }
 
+/* Extra time container */
 #extra-time-container {
   background: rgba(255,255,255,0.05);
   padding: 6px 12px;
