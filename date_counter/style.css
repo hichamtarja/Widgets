@@ -39,6 +39,19 @@ font-weight: bold;
 margin-bottom: 24px;
 }
 
+.home-btn {
+  position: absolute;
+  top: 15px;
+  left: 15px;
+  text-decoration: none;
+  color: #aaa;
+  font-size: 14px;
+}
+
+.home-btn:hover {
+  color: white;
+}
+
 /* Grid */
 .widget-list {
 display: grid;
