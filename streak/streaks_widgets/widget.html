@@ -5,62 +5,144 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Streak Widget</title>
   <link rel="stylesheet" href="style.css">
-  <!-- Confetti library for celebration -->
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1"></script>
 </head>
 <body class="widget-page">
   <a href="../index.html" class="back-btn" title="Back to widgets">←</a>
 
-  <div class="widget-container" id="widgetContainer">
-    <!-- Header with title and settings toggle -->
-    <div class="widget-header">
-      <h1 id="widget-title" class="editable-title">🔥 Streak</h1>
-      <button id="settings-toggle" class="icon-btn" title="Customize">⚙️</button>
-    </div>
+  <!-- Flip Container -->
+  <div class="flip-container" id="flipContainer">
+    <div class="flipper" id="flipper">
+      <!-- FRONT SIDE -->
+      <div class="front">
+        <div class="widget-container" id="widgetContainer">
+          <!-- Header with emoji, title, and three-dot menu -->
+          <div class="widget-header">
+            <div class="title-section">
+              <span class="widget-emoji" id="widgetEmoji">🔥</span>
+              <h1 id="widget-title" class="editable-title">Streak</h1>
+            </div>
+            <div class="menu-wrapper">
+              <button id="menu-toggle" class="icon-btn menu-btn">⋮</button>
+              <div id="menu-dropdown" class="menu-dropdown hidden">
+                <button id="menu-settings" class="menu-item">⚙️ Settings</button>
+                <button id="menu-reset" class="menu-item reset-item">↻ Reset</button>
+              </div>
+            </div>
+          </div>
 
-    <!-- Main counter display -->
-    <div class="counter-wrapper">
-      <div id="counter">0</div>
-      <div id="streak-label">day streak</div>
-    </div>
+          <!-- Flip hint (small icon to flip to back) -->
+          <button id="flip-to-back" class="flip-hint" title="View last streak">🔄</button>
 
-    <!-- Milestone progress bar -->
-    <div class="progress-container">
-      <div class="progress-bar" id="progress-bar"></div>
-      <span class="progress-text" id="progress-text">0/365</span>
-    </div>
+          <!-- Counter display -->
+          <div class="counter-wrapper">
+            <div id="counter">0</div>
+            <div id="streak-label">day streak</div>
+          </div>
 
-    <!-- Motivational status message -->
-    <p id="status">Start your streak 🚀</p>
+          <!-- Progress bar -->
+          <div class="progress-container">
+            <div class="progress-bar" id="progress-bar"></div>
+            <span class="progress-text" id="progress-text">0/365</span>
+          </div>
 
-    <!-- Control buttons -->
-    <div class="buttons">
-      <button class="streak-btn" id="increase-btn">+1</button>
-      <button class="streak-btn" id="decrease-btn">−1</button>
-      <button class="streak-btn reset-btn" id="reset-btn">↻ Reset</button>
-    </div>
+          <!-- Status message -->
+          <p id="status">Start your streak 🚀</p>
 
-    <!-- Customization panel (hidden by default) -->
-    <div id="settings-panel" class="settings-panel hidden">
-      <h3>Customize Widget</h3>
-      
-      <div class="setting-item">
-        <label for="color-picker">Counter Color</label>
-        <input type="color" id="color-picker" value="#ffffff">
+          <!-- Control buttons (icon only) -->
+          <div class="buttons">
+            <button class="streak-btn" id="decrease-btn" title="Decrease">−</button>
+            <button class="streak-btn" id="increase-btn" title="Increase">+</button>
+          </div>
+        </div>
       </div>
-      
-      <div class="setting-item">
-        <label for="accent-picker">Accent Color</label>
-        <input type="color" id="accent-picker" value="#ff6a00">
+
+      <!-- BACK SIDE (Last streak info) -->
+      <div class="back">
+        <div class="widget-container back-container">
+          <button id="flip-to-front" class="flip-hint back-flip">↩ Back</button>
+          <h3>Last Streak</h3>
+          <div id="last-streak-info">
+            <p id="last-streak-date">Never</p>
+            <p id="last-streak-time"></p>
+          </div>
+          <div class="back-footer">
+            <p>Keep going! 🔥</p>
+          </div>
+        </div>
       </div>
-      
-      <div class="setting-item">
-        <label for="size-slider">Widget Size: <span id="size-value">100</span>%</label>
-        <input type="range" id="size-slider" min="50" max="150" value="100" step="5">
-      </div>
-      
-      <button id="close-settings" class="streak-btn">Done</button>
     </div>
+  </div>
+
+  <!-- Customization Panel (hidden by default) -->
+  <div id="settings-panel" class="settings-panel hidden">
+    <h3>Customize Widget</h3>
+    
+    <!-- Emoji -->
+    <div class="setting-item">
+      <label>Widget Emoji</label>
+      <input type="text" id="emoji-input" maxlength="2" placeholder="🔥">
+    </div>
+
+    <!-- Font Family -->
+    <div class="setting-item">
+      <label>Font</label>
+      <select id="font-select">
+        <option value="'Inter', system-ui, sans-serif">Inter (Default)</option>
+        <option value="'Georgia', serif">Georgia</option>
+        <option value="'Courier New', monospace">Monospace</option>
+        <option value="'Poppins', sans-serif">Poppins</option>
+      </select>
+    </div>
+
+    <!-- Font Color -->
+    <div class="setting-item">
+      <label>Text Color</label>
+      <input type="color" id="font-color-picker" value="#ffffff">
+    </div>
+
+    <!-- Background Type -->
+    <div class="setting-item">
+      <label>Background</label>
+      <select id="bg-type-select">
+        <option value="solid">Solid</option>
+        <option value="gradient">Gradient</option>
+      </select>
+    </div>
+
+    <!-- Solid Color Picker -->
+    <div class="setting-item" id="solid-color-item">
+      <label>BG Color</label>
+      <input type="color" id="bg-color-picker" value="#1f1f1f">
+    </div>
+
+    <!-- Gradient Colors -->
+    <div class="setting-item hidden" id="gradient-color-item">
+      <label>Gradient Start</label>
+      <input type="color" id="gradient-start-picker" value="#1f1f1f">
+      <label>Gradient End</label>
+      <input type="color" id="gradient-end-picker" value="#2a2a2a">
+    </div>
+
+    <!-- Accent Color (used for progress bar and buttons) -->
+    <div class="setting-item">
+      <label>Accent Color</label>
+      <input type="color" id="accent-picker" value="#ff6a00">
+    </div>
+
+    <!-- Counter Color -->
+    <div class="setting-item">
+      <label>Counter Color</label>
+      <input type="color" id="counter-color-picker" value="#ffffff">
+    </div>
+
+    <!-- Widget Size -->
+    <div class="setting-item">
+      <label>Size: <span id="size-value">100</span>%</label>
+      <input type="range" id="size-slider" min="50" max="150" value="100" step="5">
+    </div>
+
+    <button id="close-settings" class="streak-btn">Done</button>
   </div>
 
   <script src="script.js"></script>
