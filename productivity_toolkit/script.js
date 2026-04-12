@@ -1,16 +1,16 @@
 /**
- * Productivity Toolkit
- * - Bookmark Manager with custom categories
- * - Password Generator with optional history
- * - Link Checker (HEAD request)
- * - QR Code Generator (qrcode library)
+ * Productivity Toolkit – Fixed Link Checker & QR Generator
+ * - Bookmark Manager
+ * - Password Generator
+ * - Link Checker (HEAD + fallback to GET Range)
+ * - QR Code Generator
  */
 
 // =============================================
 // STATE & DOM ELEMENTS
 // =============================================
 let bookmarks = [];
-let categories = ['General', 'Work', 'Personal']; // default categories
+let categories = ['General', 'Work', 'Personal'];
 let currentCategory = 'General';
 let editingBookmarkId = null;
 let passwordHistory = [];
@@ -77,7 +77,6 @@ function loadFromStorage() {
   const storedCategories = localStorage.getItem('toolkit_categories');
   if (storedCategories) categories = JSON.parse(storedCategories);
   else categories = ['General', 'Work', 'Personal'];
-  // Ensure General exists
   if (!categories.includes('General')) categories.unshift('General');
 }
 
@@ -112,7 +111,6 @@ function renderCategories() {
     });
     categoryList.appendChild(chip);
   });
-  // Populate category select in form
   bookmarkCategorySelect.innerHTML = '';
   categories.forEach(cat => {
     const option = document.createElement('option');
@@ -124,7 +122,6 @@ function renderCategories() {
 
 function deleteCategory(cat) {
   if (cat === 'General') return;
-  // Move bookmarks from this category to General
   bookmarks.forEach(b => { if (b.category === cat) b.category = 'General'; });
   categories = categories.filter(c => c !== cat);
   if (currentCategory === cat) currentCategory = 'General';
@@ -177,26 +174,22 @@ function renderBookmarks() {
     `;
   }).join('');
 
-  // Add event listeners to cards
   document.querySelectorAll('.bookmark-card').forEach(card => {
     card.addEventListener('click', (e) => {
       if (e.target.closest('button')) return;
-      const url = card.dataset.url;
-      window.open(url, '_blank');
+      window.open(card.dataset.url, '_blank');
     });
   });
   document.querySelectorAll('.edit-bookmark').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
-      const id = btn.dataset.id;
-      editBookmark(id);
+      editBookmark(btn.dataset.id);
     });
   });
   document.querySelectorAll('.delete-bookmark').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
-      const id = btn.dataset.id;
-      deleteBookmark(id);
+      deleteBookmark(btn.dataset.id);
     });
   });
 }
@@ -238,18 +231,13 @@ bookmarkForm.addEventListener('submit', (e) => {
 
   if (editingBookmarkId) {
     const index = bookmarks.findIndex(b => b.id === editingBookmarkId);
-    if (index !== -1) {
-      bookmarks[index] = { ...bookmarks[index], title, url, category };
-    }
+    if (index !== -1) bookmarks[index] = { ...bookmarks[index], title, url, category };
     editingBookmarkId = null;
   } else {
-    const newBookmark = {
+    bookmarks.push({
       id: Date.now() + '-' + Math.random().toString(36).substr(2, 5),
-      title,
-      url,
-      category
-    };
-    bookmarks.push(newBookmark);
+      title, url, category
+    });
   }
 
   saveToStorage();
@@ -297,25 +285,19 @@ importBookmarksFile.addEventListener('change', (e) => {
   reader.onload = (ev) => {
     try {
       const data = JSON.parse(ev.target.result);
-      if (data.bookmarks && Array.isArray(data.bookmarks)) {
-        bookmarks = data.bookmarks;
-      }
-      if (data.categories && Array.isArray(data.categories)) {
-        categories = data.categories;
-      }
+      if (data.bookmarks) bookmarks = data.bookmarks;
+      if (data.categories) categories = data.categories;
       saveToStorage();
       renderCategories();
       renderBookmarks();
-    } catch (err) {
-      alert('Invalid file format.');
-    }
+    } catch { alert('Invalid file.'); }
   };
   reader.readAsText(file);
   importBookmarksFile.value = '';
 });
 
 // =============================================
-// PASSWORD GENERATOR
+// PASSWORD GENERATOR (unchanged)
 // =============================================
 const UPPERCASE = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 const LOWERCASE = 'abcdefghijklmnopqrstuvwxyz';
@@ -328,12 +310,10 @@ function generatePassword() {
   if (includeLowercase.checked) charset += LOWERCASE;
   if (includeNumbers.checked) charset += NUMBERS;
   if (includeSymbols.checked) charset += SYMBOLS;
-
   if (charset === '') {
     alert('Select at least one character type');
     return '';
   }
-
   const length = parseInt(passwordLength.value);
   let password = '';
   for (let i = 0; i < length; i++) {
@@ -349,12 +329,10 @@ function updateStrength(password) {
   if (/[A-Z]/.test(password)) strength++;
   if (/[0-9]/.test(password)) strength++;
   if (/[^a-zA-Z0-9]/.test(password)) strength++;
-
   let level = 'weak';
   if (strength >= 4) level = 'strong';
   else if (strength >= 3) level = 'medium';
   else if (strength >= 5) level = 'very-strong';
-
   strengthBar.dataset.strength = level;
   strengthText.textContent = level.charAt(0).toUpperCase() + level.slice(1);
   if (level === 'very-strong') strengthText.textContent = 'Very Strong';
@@ -376,24 +354,20 @@ function renderHistory() {
     passwordHistoryList.innerHTML = '<div class="history-item">No history</div>';
     return;
   }
-  passwordHistoryList.innerHTML = passwordHistory.map(p => `<div class="history-item"><span>${p}</span><button class="copy-history" data-pwd="${p}">📋</button></div>`).join('');
+  passwordHistoryList.innerHTML = passwordHistory.map(p => 
+    `<div class="history-item"><span>${p}</span><button class="copy-history" data-pwd="${p}">📋</button></div>`
+  ).join('');
   document.querySelectorAll('.copy-history').forEach(btn => {
-    btn.addEventListener('click', () => {
-      navigator.clipboard.writeText(btn.dataset.pwd);
-    });
+    btn.addEventListener('click', () => navigator.clipboard.writeText(btn.dataset.pwd));
   });
 }
 
-passwordLength.addEventListener('input', () => {
-  lengthValue.textContent = passwordLength.value;
-});
-
+passwordLength.addEventListener('input', () => lengthValue.textContent = passwordLength.value);
 generatePasswordBtn.addEventListener('click', refreshPassword);
 copyPasswordBtn.addEventListener('click', () => {
   navigator.clipboard.writeText(generatedPassword.value);
   alert('Password copied!');
 });
-
 enableHistory.addEventListener('change', (e) => {
   historyEnabled = e.target.checked;
   passwordHistoryList.classList.toggle('hidden', !historyEnabled);
@@ -401,30 +375,58 @@ enableHistory.addEventListener('change', (e) => {
   if (!historyEnabled) passwordHistory = [];
   else renderHistory();
 });
-
 clearHistoryBtn.addEventListener('click', () => {
   passwordHistory = [];
   renderHistory();
 });
-
-// Initialize password
 refreshPassword();
 
 // =============================================
-// LINK CHECKER
+// FIXED: LINK CHECKER (HEAD with fallback)
 // =============================================
 async function checkLink(url) {
+  // Reset classes
+  statusIndicator.className = 'status-indicator';
+  statusText.textContent = 'Checking...';
+  
   const startTime = performance.now();
+  
+  // Try HEAD first
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000);
-    const response = await fetch(url, { method: 'HEAD', signal: controller.signal, cache: 'no-cache' });
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
+    const response = await fetch(url, { 
+      method: 'HEAD', 
+      signal: controller.signal,
+      mode: 'cors', // allow cross-origin
+      cache: 'no-cache'
+    });
     clearTimeout(timeoutId);
-    const endTime = performance.now();
-    const duration = Math.round(endTime - startTime);
+    const duration = Math.round(performance.now() - startTime);
     return { ok: response.ok, status: response.status, duration };
-  } catch (err) {
-    return { ok: false, status: err.name === 'AbortError' ? 'Timeout' : 'Network Error', duration: 0 };
+  } catch (headError) {
+    // HEAD failed – try a GET with Range header (only fetch first byte)
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: { 'Range': 'bytes=0-0' },
+        signal: controller.signal,
+        mode: 'cors',
+        cache: 'no-cache'
+      });
+      clearTimeout(timeoutId);
+      const duration = Math.round(performance.now() - startTime);
+      // If we got a response (even if partial), consider it reachable
+      return { ok: response.ok || response.status < 400, status: response.status, duration };
+    } catch (getError) {
+      const duration = Math.round(performance.now() - startTime);
+      let errorMsg = 'Network Error';
+      if (getError.name === 'AbortError') errorMsg = 'Timeout';
+      else if (getError.message.includes('Failed to fetch')) errorMsg = 'Cannot reach server';
+      return { ok: false, status: errorMsg, duration };
+    }
   }
 }
 
@@ -434,10 +436,11 @@ checkLinkBtn.addEventListener('click', async () => {
   if (!url.startsWith('http://') && !url.startsWith('https://')) {
     url = 'https://' + url;
   }
-
-  statusIndicator.className = 'status-indicator';
-  statusText.textContent = 'Checking...';
+  
   const result = await checkLink(url);
+  
+  // Update UI
+  statusIndicator.className = 'status-indicator';
   if (result.ok) {
     statusIndicator.classList.add('success');
     statusText.textContent = `✅ Reachable (HTTP ${result.status}) · ${result.duration}ms`;
@@ -448,20 +451,35 @@ checkLinkBtn.addEventListener('click', async () => {
 });
 
 // =============================================
-// QR CODE GENERATOR
+// FIXED: QR CODE GENERATOR
 // =============================================
 generateQrBtn.addEventListener('click', () => {
   const text = qrUrlInput.value.trim();
-  if (!text) return;
+  if (!text) {
+    alert('Please enter a URL or text');
+    return;
+  }
 
-  qrPlaceholder.style.display = 'none';
-  qrCanvas.style.display = 'block';
-  QRCode.toCanvas(qrCanvas, text, { width: 200, margin: 2 }, (error) => {
+  // Show loading state
+  qrPlaceholder.style.display = 'flex';
+  qrPlaceholder.textContent = 'Generating...';
+  qrCanvas.style.display = 'none';
+  downloadQrBtn.disabled = true;
+
+  // Use QRCode library
+  QRCode.toCanvas(qrCanvas, text, { 
+    width: 200, 
+    margin: 2,
+    errorCorrectionLevel: 'M'
+  }, (error) => {
     if (error) {
-      alert('Failed to generate QR code');
-      qrCanvas.style.display = 'none';
+      console.error(error);
+      qrPlaceholder.textContent = 'Failed to generate QR code';
       qrPlaceholder.style.display = 'flex';
+      qrCanvas.style.display = 'none';
     } else {
+      qrPlaceholder.style.display = 'none';
+      qrCanvas.style.display = 'block';
       downloadQrBtn.disabled = false;
     }
   });
@@ -475,17 +493,15 @@ downloadQrBtn.addEventListener('click', () => {
 });
 
 // =============================================
-// INITIAL RENDER
+// INITIAL RENDER & SORTABLE
 // =============================================
 renderCategories();
 renderBookmarks();
 
-// Re-attach sortable for bookmarks (drag-and-drop)
 new Sortable(bookmarksContainer, {
   animation: 150,
   ghostClass: 'sortable-ghost',
-  onEnd: function(evt) {
-    // Update order in bookmarks array based on current category
+  onEnd: function() {
     const cards = [...bookmarksContainer.querySelectorAll('.bookmark-card')];
     const newOrderIds = cards.map(card => card.dataset.id);
     const categoryBookmarks = bookmarks.filter(b => b.category === currentCategory);
