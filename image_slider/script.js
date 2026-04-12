@@ -5,6 +5,7 @@
  * - URL input or file upload (converted to data URL)
  * - Preview thumbnail updates live
  * - Edit existing sliders with full control over images
+ * - Opens widget at ../image_slider_widget/index.html?id=...
  */
 
 const WIDGET_LIST_KEY = "image_slider_list";
@@ -203,16 +204,19 @@ function escapeHtml(text) {
 }
 
 function attachCardEvents() {
+  // Open widget
   document.querySelectorAll('[data-open]').forEach(btn => {
     btn.addEventListener('click', () => {
       const id = btn.dataset.open;
       window.location.href = `../image_slider_widget/index.html?id=${encodeURIComponent(id)}`;
     });
   });
+
+  // Copy link
   document.querySelectorAll('[data-copy]').forEach(btn => {
     btn.addEventListener('click', async () => {
       const id = btn.dataset.copy;
-      const link = `${window.location.origin}${window.location.pathname.replace(/index\.html$/, '')}../image_slider_widget/index.html?id=${encodeURIComponent(id)}`;
+      const link = `${window.location.origin}/image_slider_widget/index.html?id=${encodeURIComponent(id)}`;
       try {
         await navigator.clipboard.writeText(link);
         const original = btn.textContent;
@@ -221,6 +225,8 @@ function attachCardEvents() {
       } catch { prompt('Copy this link:', link); }
     });
   });
+
+  // Edit
   document.querySelectorAll('[data-edit]').forEach(btn => {
     btn.addEventListener('click', () => {
       const id = btn.dataset.edit;
@@ -235,6 +241,8 @@ function attachCardEvents() {
       widgetModal.classList.remove('hidden');
     });
   });
+
+  // Delete
   document.querySelectorAll('[data-delete]').forEach(btn => {
     btn.addEventListener('click', () => {
       const id = btn.dataset.delete;
