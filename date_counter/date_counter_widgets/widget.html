@@ -10,7 +10,7 @@
 
   <div class="widget-wrapper" id="widgetWrapper">
     <div class="container" id="mainContainer">
-      <!-- INPUT SECTION (shown before starting) -->
+      <!-- INPUT SECTION -->
       <div id="input-section">
         <h1 id="counter-title">✨ Countdown Studio</h1>
 
@@ -34,7 +34,13 @@
       <div id="counter-section" style="display:none;">
         <div class="counter-header">
           <h1 id="display-title"></h1>
-          <button id="settings-toggle" class="icon-btn" title="Customize">⚙️</button>
+          <div class="menu-wrapper">
+            <button id="menu-toggle" class="icon-btn menu-btn" title="Menu">⋮</button>
+            <div id="menu-dropdown" class="menu-dropdown hidden">
+              <button id="menu-settings" class="menu-item">⚙️ Settings</button>
+              <button id="menu-reset" class="menu-item reset-item">↻ Reset</button>
+            </div>
+          </div>
         </div>
 
         <!-- Countdown blocks -->
@@ -58,17 +64,15 @@
           </div>
         </div>
 
-        <!-- Controls -->
+        <!-- Icon-only tool controls -->
         <div class="controls">
-          <button id="add-milestone-btn">➕ Add Milestone</button>
-          <button id="view-milestones-btn">📋 View Milestones</button>
-          <button id="toggle-tools-btn">👁️ Hide Tools</button>
+          <button id="add-milestone-btn" class="tool-btn" title="Add Milestone">➕</button>
+          <button id="view-milestones-btn" class="tool-btn" title="View Milestones">📋</button>
+          <button id="toggle-tools-btn" class="tool-btn" title="Hide Tools">👁️</button>
         </div>
 
         <!-- Quote display -->
         <blockquote id="display-quote"></blockquote>
-
-        <button id="reset-btn">↻ Reset</button>
       </div>
     </div>
   </div>
