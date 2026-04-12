@@ -678,3 +678,7 @@ body.light-mode .fullscreen-overlay {
 .task-item.completed .task-delete-btn {
   pointer-events: auto;  /* Allow delete button to work */
 }
+
+.pomodoro-dot.half {
+  background: linear-gradient(90deg, var(--accent) 50%, #444 50%);
+}
