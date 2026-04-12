@@ -8,70 +8,68 @@
 <body>
   <a href="../index.html" class="back-btn" title="Back to dashboard">←</a>
 
-  <div class="container">
-    <!-- INPUT SECTION (shown before starting) -->
-    <div id="input-section">
-      <h1 id="counter-title">✨ Countdown Studio</h1>
+  <div class="widget-wrapper" id="widgetWrapper">
+    <div class="container" id="mainContainer">
+      <!-- INPUT SECTION (shown before starting) -->
+      <div id="input-section">
+        <h1 id="counter-title">✨ Countdown Studio</h1>
 
-      <input type="text" id="title" placeholder="Event Title">
-      
-      <!-- datetime-local for both date and time -->
-      <div class="datetime-group">
-        <label>Start</label>
-        <input type="datetime-local" id="start-datetime">
-      </div>
-      <div class="datetime-group">
-        <label>End</label>
-        <input type="datetime-local" id="end-datetime">
-      </div>
-
-      <!-- Color customizer -->
-      <div class="color-picker-group">
-        <label>🎨 Accent Color</label>
-        <input type="color" id="accent-color" value="#ff6a00">
-      </div>
-
-      <textarea id="quote" placeholder="Add a quote or message..."></textarea>
-
-      <button id="start-btn" type="button">Start Counter</button>
-    </div>
-
-    <!-- COUNTER DISPLAY SECTION (shown after starting) -->
-    <div id="counter-section" style="display:none;">
-      <h1 id="display-title"></h1>
-
-      <!-- Countdown blocks -->
-      <div class="counter-panel">
-        <div id="countdown">
-          <div><span id="years">0</span> <small>Years</small></div>
-          <div><span id="months">0</span> <small>Months</small></div>
-          <div><span id="weeks">0</span> <small>Weeks</small></div>
-          <div><span id="days">0</span> <small>Days</small></div>
-          <div><span id="hours">0</span> <small>Hours</small></div>
-          <div><span id="minutes">0</span> <small>Minutes</small></div>
-          <div><span id="seconds">0</span> <small>Seconds</small></div>
+        <input type="text" id="title" placeholder="Event Title">
+        
+        <div class="datetime-group">
+          <label>Start</label>
+          <input type="datetime-local" id="start-datetime">
         </div>
-      </div>
-
-      <!-- Progress bar with runner -->
-      <div class="progress-container">
-        <img src="runner.gif" class="runner" id="runner" alt="runner">
-        <div class="progress-bar">
-          <div class="progress-fill" id="progress-fill"></div>
+        <div class="datetime-group">
+          <label>End</label>
+          <input type="datetime-local" id="end-datetime">
         </div>
+
+        <textarea id="quote" placeholder="Add a quote or message..."></textarea>
+
+        <button id="start-btn" type="button">Start Counter</button>
       </div>
 
-      <!-- Controls -->
-      <div class="controls">
-        <button id="add-milestone-btn">➕ Add Milestone</button>
-        <button id="view-milestones-btn">📋 View Milestones</button>
-        <button id="toggle-tools-btn">👁️ Hide Tools</button>
+      <!-- COUNTER DISPLAY SECTION -->
+      <div id="counter-section" style="display:none;">
+        <div class="counter-header">
+          <h1 id="display-title"></h1>
+          <button id="settings-toggle" class="icon-btn" title="Customize">⚙️</button>
+        </div>
+
+        <!-- Countdown blocks -->
+        <div class="counter-panel">
+          <div id="countdown">
+            <div><span id="years">0</span> <small>Years</small></div>
+            <div><span id="months">0</span> <small>Months</small></div>
+            <div><span id="weeks">0</span> <small>Weeks</small></div>
+            <div><span id="days">0</span> <small>Days</small></div>
+            <div><span id="hours">0</span> <small>Hours</small></div>
+            <div><span id="minutes">0</span> <small>Minutes</small></div>
+            <div><span id="seconds">0</span> <small>Seconds</small></div>
+          </div>
+        </div>
+
+        <!-- Progress bar with runner -->
+        <div class="progress-container">
+          <img src="runner.gif" class="runner" id="runner" alt="runner">
+          <div class="progress-bar">
+            <div class="progress-fill" id="progress-fill"></div>
+          </div>
+        </div>
+
+        <!-- Controls -->
+        <div class="controls">
+          <button id="add-milestone-btn">➕ Add Milestone</button>
+          <button id="view-milestones-btn">📋 View Milestones</button>
+          <button id="toggle-tools-btn">👁️ Hide Tools</button>
+        </div>
+
+        <!-- Quote display -->
+        <blockquote id="display-quote"></blockquote>
+
+        <button id="reset-btn">↻ Reset</button>
       </div>
-
-      <!-- Quote display (redesigned) -->
-      <blockquote id="display-quote"></blockquote>
-
-      <button id="reset-btn">↻ Reset</button>
     </div>
   </div>
 
@@ -84,6 +82,55 @@
       <input type="datetime-local" id="ms-start">
       <input type="datetime-local" id="ms-end">
       <button id="ms-save">Save Milestone</button>
+    </div>
+  </div>
+
+  <!-- Customization Panel (draggable) -->
+  <div id="settings-panel" class="settings-panel hidden">
+    <div class="settings-header" id="settings-header">
+      <h3>Customize Widget</h3>
+      <span class="drag-handle">⠿</span>
+    </div>
+    <div class="settings-content">
+      <div class="setting-item">
+        <label>Accent Color</label>
+        <input type="color" id="accent-color" value="#ff6a00">
+      </div>
+      <div class="setting-item">
+        <label>Font</label>
+        <select id="font-select">
+          <option value="'Segoe UI', 'Arial', sans-serif">Default</option>
+          <option value="'Inter', system-ui, sans-serif">Inter</option>
+          <option value="'Georgia', serif">Georgia</option>
+          <option value="'Courier New', monospace">Monospace</option>
+        </select>
+      </div>
+      <div class="setting-item">
+        <label>Text Color</label>
+        <input type="color" id="text-color" value="#f0f0f0">
+      </div>
+      <div class="setting-item">
+        <label>Background</label>
+        <select id="bg-type">
+          <option value="solid">Solid</option>
+          <option value="gradient">Gradient</option>
+        </select>
+      </div>
+      <div class="setting-item" id="solid-bg-item">
+        <label>BG Color</label>
+        <input type="color" id="bg-color" value="#191919">
+      </div>
+      <div class="setting-item hidden" id="gradient-bg-item">
+        <label>Gradient Start</label>
+        <input type="color" id="gradient-start" value="#191919">
+        <label>Gradient End</label>
+        <input type="color" id="gradient-end" value="#2a2a2a">
+      </div>
+      <div class="setting-item">
+        <label>Size: <span id="size-value">100</span>%</label>
+        <input type="range" id="size-slider" min="50" max="150" value="100" step="5">
+      </div>
+      <button id="close-settings" class="primary-btn">Done</button>
     </div>
   </div>
 
