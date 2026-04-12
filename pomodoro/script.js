@@ -9,7 +9,9 @@ let isRunning = false;
 let totalSessionTime = 25 * 60;
 let tickingInterval = null;
 let pendingInterruption = false;
-let partialMode = null; // 'reset' or 'complete' when user chooses after pause
+let partialMode = null;          // 'reset' or 'complete'
+let partialElapsedLogged = false; // whether elapsed portion already logged in complete mode
+let currentSessionStart = null;   // timestamp when session started (for partial logging)
 
 let todayPomodoros = 0;
 let streakDays = 0;
@@ -103,14 +105,12 @@ const setLogSkipped = document.getElementById('set-log-skipped');
 const setTickingSound = document.getElementById('set-ticking-sound');
 const saveSettingsBtn = document.getElementById('save-settings-btn');
 
-// Value displays
 const workValue = document.getElementById('work-value');
 const shortValue = document.getElementById('short-value');
 const longValue = document.getElementById('long-value');
 const intervalValue = document.getElementById('interval-value');
 const editEstimateValue = document.getElementById('edit-estimate-value');
 
-// Task edit
 const editTaskId = document.getElementById('edit-task-id');
 const editTaskTitle = document.getElementById('edit-task-title');
 const editTaskEstimate = document.getElementById('edit-task-estimate');
@@ -210,7 +210,7 @@ function updateStreak() {
   streakDaysSpan.textContent = streakDays;
 }
 
-// ======================== TIMER CORE ========================
+// ======================== TIMER CORE (Fixed freeze) ========================
 function updateTimerDisplay() {
   const mins = Math.floor(timeLeft / 60);
   const secs = timeLeft % 60;
@@ -236,7 +236,8 @@ function drawTimer(progress = null) {
   ctx.stroke();
 }
 
-// Ticking sound - fixed
+// Ticking sound – fixed: use a single AudioContext and suspend/resume
+let tickAudioCtx = null;
 function startTicking() {
   if (!settings.tickingSound) return;
   stopTicking();
@@ -252,15 +253,15 @@ function stopTicking() {
 }
 function playTickSound() {
   try {
-    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    if (audioCtx.state === 'suspended') audioCtx.resume();
-    const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
-    osc.connect(gain); gain.connect(audioCtx.destination);
+    if (!tickAudioCtx) tickAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (tickAudioCtx.state === 'suspended') tickAudioCtx.resume();
+    const osc = tickAudioCtx.createOscillator();
+    const gain = tickAudioCtx.createGain();
+    osc.connect(gain); gain.connect(tickAudioCtx.destination);
     osc.frequency.value = 800;
-    gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
-    osc.start(); osc.stop(audioCtx.currentTime + 0.15);
+    gain.gain.setValueAtTime(0.08, tickAudioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, tickAudioCtx.currentTime + 0.15);
+    osc.start(); osc.stop(tickAudioCtx.currentTime + 0.15);
   } catch(e) {}
 }
 
@@ -290,6 +291,7 @@ function startTimer() {
   startPauseBtn.textContent = 'Pause';
   logPartialContainer.style.display = 'none';
   lastTimestamp = null;
+  if (!currentSessionStart) currentSessionStart = Date.now();
   animationFrame = requestAnimationFrame(timerLoop);
   if (settings.desktopNotify && Notification.permission === 'default') Notification.requestPermission();
 }
@@ -310,6 +312,9 @@ function resetTimer() {
   logPartialContainer.style.display = 'none';
   pendingInterruption = false;
   startPauseBtn.textContent = 'Start';
+  currentSessionStart = null;
+  partialMode = null;
+  partialElapsedLogged = false;
 }
 
 // ======================== PARTIAL SESSION HANDLING ========================
@@ -329,32 +334,35 @@ function showPartialOptions() {
   partialOptionsModal.style.display = 'flex';
 }
 
-function logPartialSessionAndReset() {
+// Helper to log elapsed portion (used by both options)
+function logElapsedPortion() {
   const elapsed = totalSessionTime - timeLeft;
-  if (elapsed > 0) {
-    const activeTask = activeTaskId ? tasks.find(t => t.id === activeTaskId) : null;
-    const session = {
-      type: currentSessionType,
-      duration: Math.floor(elapsed / 60),
-      timestamp: new Date().toISOString(),
-      taskName: (currentSessionType === 'work' && activeTask) ? activeTask.title : null,
-      interruptions: [],
-      partial: true
-    };
-    sessionsHistory.push(session);
-    if (currentSessionType === 'work' && activeTask && !activeTask.completed) {
-      activeTask.completedPomodoros = Math.min(activeTask.completedPomodoros + 1, activeTask.estimatedPomodoros);
-      if (activeTask.completedPomodoros >= activeTask.estimatedPomodoros) {
-        activeTask.completed = true;
-        playTaskCompleteSound();
-      }
-      todayPomodoros++;
-      updateStreak();
+  if (elapsed <= 0) return;
+  const activeTask = activeTaskId ? tasks.find(t => t.id === activeTaskId) : null;
+  const session = {
+    type: currentSessionType,
+    duration: Math.floor(elapsed / 60),
+    timestamp: new Date().toISOString(),
+    taskName: (currentSessionType === 'work' && activeTask) ? activeTask.title : null,
+    interruptions: [],
+    partial: true
+  };
+  sessionsHistory.push(session);
+  if (currentSessionType === 'work' && activeTask && !activeTask.completed) {
+    activeTask.completedPomodoros = Math.min(activeTask.completedPomodoros + 1, activeTask.estimatedPomodoros);
+    if (activeTask.completedPomodoros >= activeTask.estimatedPomodoros) {
+      activeTask.completed = true;
     }
-    saveToStorage();
-    renderTasks();
-    renderHistoryList();
+    todayPomodoros++;
+    updateStreak();
   }
+  saveToStorage();
+  renderTasks();
+  renderHistoryList();
+}
+
+function logPartialSessionAndReset() {
+  logElapsedPortion();
   // Reset timer
   timeLeft = totalSessionTime;
   updateTimerDisplay();
@@ -363,19 +371,25 @@ function logPartialSessionAndReset() {
   partialOptionsModal.style.display = 'none';
   pendingInterruption = false;
   startPauseBtn.textContent = 'Start';
+  currentSessionStart = null;
+  partialMode = null;
+  partialElapsedLogged = false;
 }
 
 function setupPartialCompleteMode() {
-  // Mark that we want to complete the remaining time, then resume
+  // Log elapsed portion now
+  logElapsedPortion();
+  partialElapsedLogged = true;
   partialMode = 'complete';
   partialOptionsModal.style.display = 'none';
+  // The remaining time will be logged upon completion
   startTimer();
 }
 
 function completeSession(isSkipped = false) {
   pauseTimer();
   stopTicking();
-  playSound(settings.sound);
+  if (settings.sound !== 'none') playSound(settings.sound);
   if (settings.desktopNotify && Notification.permission === 'granted') {
     new Notification(`Pomodoro Suite`, { body: `${currentSessionType} session completed!` });
   }
@@ -386,21 +400,26 @@ function completeSession(isSkipped = false) {
 
   const activeTask = activeTaskId ? tasks.find(t => t.id === activeTaskId) : null;
   const shouldLog = !isSkipped || settings.logSkipped;
-  
-  // Handle partial complete mode: log only the portion since pause
-  let loggedDuration = totalSessionTime / 60;
-  if (partialMode === 'complete') {
-    // The elapsed portion was already logged when user chose "Complete Timer"
-    // Now we need to log the remaining portion (the time that just finished)
-    const remainingPortion = timeLeft; // timeLeft is 0 now
-    // Actually we already logged elapsed earlier; now log the rest as a separate session?
-    // Simpler: don't double-log; just create one session for the full duration if not already logged.
-    // We'll implement: when user picks "Complete", we resume without logging, then at completion we log full session.
-    // So set shouldLog = true and don't treat as partial.
-    partialMode = null;
-  }
 
-  if (shouldLog) {
+  let loggedDuration = totalSessionTime / 60;
+  if (partialMode === 'complete' && partialElapsedLogged) {
+    // We already logged the elapsed portion; now log the remaining portion
+    loggedDuration = timeLeft / 60; // timeLeft is 0 at completion, so this would be 0. Actually we need the remaining time.
+    // Better: we logged elapsed earlier; now we just need to log the remaining time as a separate session.
+    // We'll create a new session for the remaining portion.
+    if (timeLeft > 0) {
+      const remainingSession = {
+        type: currentSessionType,
+        duration: Math.floor(timeLeft / 60),
+        timestamp: new Date().toISOString(),
+        taskName: (currentSessionType === 'work' && activeTask) ? activeTask.title : null,
+        interruptions: []
+      };
+      sessionsHistory.push(remainingSession);
+    }
+    partialMode = null;
+    partialElapsedLogged = false;
+  } else if (shouldLog) {
     const session = {
       type: currentSessionType,
       duration: loggedDuration,
@@ -418,7 +437,7 @@ function completeSession(isSkipped = false) {
       activeTask.completedPomodoros = Math.min(activeTask.completedPomodoros + 1, activeTask.estimatedPomodoros);
       if (activeTask.completedPomodoros >= activeTask.estimatedPomodoros) {
         activeTask.completed = true;
-        playTaskCompleteSound();
+        // No beep; maybe a visual celebration?
       }
     }
   }
@@ -437,6 +456,7 @@ function completeSession(isSkipped = false) {
 
   timeLeft = (currentSessionType === 'work' ? settings.workDuration : currentSessionType === 'shortBreak' ? settings.shortBreak : settings.longBreak) * 60;
   totalSessionTime = timeLeft;
+  currentSessionStart = null;
   updateSessionLabel();
   updateTimerDisplay();
   drawTimer(1);
@@ -448,6 +468,7 @@ function completeSession(isSkipped = false) {
   logPartialContainer.style.display = 'none';
   pendingInterruption = false;
   partialMode = null;
+  partialElapsedLogged = false;
   startPauseBtn.textContent = 'Start';
   if (settings.autoStart && !isSkipped) startTimer();
 }
@@ -472,34 +493,22 @@ function playSound(type) {
     osc.start(); osc.stop(audioCtx.currentTime + 0.5);
   } catch(e) {}
 }
-function playTaskCompleteSound() {
-  try {
-    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
-    osc.connect(gain); gain.connect(audioCtx.destination);
-    osc.frequency.value = 1200;
-    gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
-    osc.start(); osc.stop(audioCtx.currentTime + 0.3);
-  } catch(e) {}
-}
 
-// ======================== TASKS (with unselect) ========================
+// ======================== TASKS (with edit button, no edit on completed) ========================
 function renderTasks() {
   const activeTasks = tasks.filter(t => !t.completed);
   const completedTasks = tasks.filter(t => t.completed);
   tasksListDiv.innerHTML = '';
-  activeTasks.forEach(task => renderTaskItem(task, tasksListDiv));
+  activeTasks.forEach(task => renderTaskItem(task, tasksListDiv, false));
   completedTasksDiv.innerHTML = '';
   if (showCompleted) completedTasks.forEach(task => renderTaskItem(task, completedTasksDiv, true));
   const total = tasks.length;
   const completedCount = tasks.filter(t => t.completed).length;
   tasksCompletedSpan.textContent = `${completedCount}/${total} completed`;
 }
-function renderTaskItem(task, container) {
+function renderTaskItem(task, container, isCompleted = false) {
   const taskEl = document.createElement('div');
-  taskEl.className = `task-item ${activeTaskId === task.id ? 'active' : ''}`;
+  taskEl.className = `task-item ${activeTaskId === task.id ? 'active' : ''} ${isCompleted ? 'completed' : ''}`;
   const dotsHtml = Array.from({ length: task.estimatedPomodoros }, (_, i) => `<span class="pomodoro-dot ${i < task.completedPomodoros ? 'completed' : ''}"></span>`).join('');
   taskEl.innerHTML = `
     <div class="task-header">
@@ -513,6 +522,7 @@ function renderTaskItem(task, container) {
         ${task.notes ? `<small>📝 ${escapeHtml(task.notes.substring(0,30))}...</small>` : ''}
       </div>
     </div>
+    ${!isCompleted ? '<button class="task-edit-btn" title="Edit task">✎</button>' : ''}
     <button class="task-delete-btn" title="Delete task">✕</button>
   `;
   const deleteBtn = taskEl.querySelector('.task-delete-btn');
@@ -525,6 +535,13 @@ function renderTaskItem(task, container) {
       renderTasks();
     }
   });
+  const editBtn = taskEl.querySelector('.task-edit-btn');
+  if (editBtn) {
+    editBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openTaskModal(task);
+    });
+  }
   const checkbox = taskEl.querySelector('.task-checkbox');
   checkbox.addEventListener('change', (e) => {
     task.completed = e.target.checked;
@@ -532,14 +549,12 @@ function renderTaskItem(task, container) {
     renderTasks();
   });
   taskEl.addEventListener('click', (e) => {
-    if (e.target.type !== 'checkbox' && !e.target.classList.contains('task-delete-btn')) {
-      // Toggle active: if already active, unselect; else set active
+    if (e.target.type !== 'checkbox' && !e.target.classList.contains('task-delete-btn') && !e.target.classList.contains('task-edit-btn')) {
       activeTaskId = (activeTaskId === task.id) ? null : task.id;
       renderTasks();
       saveToStorage();
     }
   });
-  taskEl.addEventListener('dblclick', () => openTaskModal(task));
   container.appendChild(taskEl);
 }
 function openTaskModal(task = null) {
@@ -566,48 +581,54 @@ function saveTask() {
     const task = tasks.find(t => t.id === id);
     if (task) { task.title = title; task.estimatedPomodoros = estimate; task.notes = notes; }
   } else {
-    tasks.push({ id: Date.now().toString(), title, estimatedPomodoros: estimate, completedPomodoros: 0, notes, completed: false });
+    tasks.push({ id: Date.now().toString(), title, estimatedPomodoros: estimate, completedPomodoros: 0, notes, completed: false, createdAt: new Date().toISOString() });
   }
   saveToStorage(); renderTasks(); taskModal.style.display = 'none';
 }
 
-// ======================== STATISTICS ========================
+// ======================== STATISTICS (Tasks chart without legend) ========================
 function getChartData(tab) {
   const workSessions = sessionsHistory.filter(s => s.type === 'work' && !s.partial);
   const now = new Date();
   if (tab === 'daily') {
-    const days = [], counts = [], completedTasksCounts = [];
+    const days = [], counts = [], taskCounts = [];
     for (let i = 6; i >= 0; i--) {
       const d = new Date(now); d.setDate(now.getDate() - i);
       const dateStr = d.toISOString().split('T')[0];
       days.push(d.toLocaleDateString('en-US', { weekday: 'short' }));
       counts.push(workSessions.filter(s => s.timestamp.startsWith(dateStr)).length);
-      // Count tasks completed on that day (approximate using timestamp)
-      const tasksCompleted = tasks.filter(t => t.completed && t.createdAt && t.createdAt.startsWith(dateStr)).length;
-      completedTasksCounts.push(tasksCompleted);
+      taskCounts.push(tasks.filter(t => t.completed && t.createdAt && t.createdAt.startsWith(dateStr)).length);
     }
     return { labels: days, datasets: [
       { label: 'Pomodoros', data: counts, backgroundColor: settings.accentColor },
-      { label: 'Tasks Done', data: completedTasksCounts, backgroundColor: '#4caf50' }
+      { label: 'Tasks', data: taskCounts, backgroundColor: '#4caf50' }
     ]};
   } else if (tab === 'weekly') {
-    const weeks = [], counts = [];
+    const weeks = [], counts = [], taskCounts = [];
     for (let i = 3; i >= 0; i--) {
       const start = new Date(now); start.setDate(now.getDate() - i*7);
       const end = new Date(start); end.setDate(start.getDate() + 6);
       weeks.push(`W${4-i}`);
       counts.push(workSessions.filter(s => { const d = new Date(s.timestamp); return d >= start && d <= end; }).length);
+      taskCounts.push(tasks.filter(t => t.completed && t.createdAt && new Date(t.createdAt) >= start && new Date(t.createdAt) <= end).length);
     }
-    return { labels: weeks, datasets: [{ label: 'Pomodoros', data: counts, backgroundColor: settings.accentColor }] };
+    return { labels: weeks, datasets: [
+      { label: 'Pomodoros', data: counts, backgroundColor: settings.accentColor },
+      { label: 'Tasks', data: taskCounts, backgroundColor: '#4caf50' }
+    ]};
   } else if (tab === 'monthly') {
-    const months = [], counts = [];
+    const months = [], counts = [], taskCounts = [];
     for (let i = 5; i >= 0; i--) {
       const d = new Date(now); d.setMonth(now.getMonth() - i);
       const monthStr = d.toISOString().slice(0,7);
       months.push(d.toLocaleDateString('en-US', { month: 'short' }));
       counts.push(workSessions.filter(s => s.timestamp.startsWith(monthStr)).length);
+      taskCounts.push(tasks.filter(t => t.completed && t.createdAt && t.createdAt.startsWith(monthStr)).length);
     }
-    return { labels: months, datasets: [{ label: 'Pomodoros', data: counts, backgroundColor: settings.accentColor }] };
+    return { labels: months, datasets: [
+      { label: 'Pomodoros', data: counts, backgroundColor: settings.accentColor },
+      { label: 'Tasks', data: taskCounts, backgroundColor: '#4caf50' }
+    ]};
   } else if (tab === 'tasks') {
     const completed = tasks.filter(t => t.completed).length;
     const active = tasks.filter(t => !t.completed).length;
@@ -619,10 +640,16 @@ function updateChart(tab) {
   const ctxChart = document.getElementById('stats-chart').getContext('2d');
   if (statsChart) statsChart.destroy();
   const chartData = getChartData(tab);
+  const showLegend = (tab === 'daily' || tab === 'weekly' || tab === 'monthly'); // tasks tab doesn't need legend
   statsChart = new Chart(ctxChart, {
     type: 'bar',
     data: { labels: chartData.labels, datasets: chartData.datasets },
-    options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: showLegend } },
+      scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+    }
   });
 }
 function renderHistoryList() {
@@ -718,29 +745,38 @@ function init() {
   saveTaskBtn.addEventListener('click', saveTask);
 
   document.getElementById('log-interruption-btn').addEventListener('click', () => {
-    if (sessionsHistory.length) {
-      interruptModal.style.display = 'flex';
-    } else {
-      alert('No active session to log interruption for.');
-    }
+    interruptModal.style.display = 'flex';
   });
   saveInterruptBtn.addEventListener('click', () => {
     const reason = interruptReason.value.trim();
     if (reason) {
-      if (sessionsHistory.length) {
-        const last = sessionsHistory[sessionsHistory.length-1];
-        if (!last.interruptions) last.interruptions = [];
-        last.interruptions.push({ reason, time: new Date().toISOString() });
-      } else {
-        // If no session, create a placeholder? Better to just not log.
-      }
-      saveToStorage();
-      renderHistoryList();
+      // Add interruption to current session (the one that will be logged)
+      // We'll store pending interruption to be added when session completes
+      if (!window.pendingInterruptions) window.pendingInterruptions = [];
+      window.pendingInterruptions.push({ reason, time: new Date().toISOString() });
     }
     interruptModal.style.display = 'none';
     interruptReason.value = '';
     if (!isRunning && !pendingInterruption) startTimer();
   });
+
+  // Modify completeSession to attach pendingInterruptions to the new session
+  const originalComplete = completeSession;
+  completeSession = function(isSkipped) {
+    if (window.pendingInterruptions && window.pendingInterruptions.length) {
+      // will be added to session later
+    }
+    originalComplete.call(this, isSkipped);
+    // attach to last session
+    if (window.pendingInterruptions && sessionsHistory.length) {
+      const last = sessionsHistory[sessionsHistory.length-1];
+      if (!last.interruptions) last.interruptions = [];
+      last.interruptions.push(...window.pendingInterruptions);
+      window.pendingInterruptions = [];
+      saveToStorage();
+      renderHistoryList();
+    }
+  };
 
   logPartialBtn.addEventListener('click', showPartialOptions);
   partialResetOption.addEventListener('click', logPartialSessionAndReset);
@@ -789,4 +825,5 @@ function init() {
   if (Notification.permission === 'default') Notification.requestPermission();
 }
 
+// Override completeSession reference after init
 init();
