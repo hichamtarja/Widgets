@@ -1,80 +1,287 @@
-body {
-  margin: 0;
-  font-family: Arial, sans-serif;
-  background: linear-gradient(135deg, #141e30, #243b55);
-  color: white;
-  overflow-x: hidden;
+/* =============================================
+   CSS CUSTOM PROPERTIES (THEME & ACCENT)
+   ============================================= */
+:root {
+  /* Light theme (default) */
+  --bg-gradient-start: #f0f4f8;
+  --bg-gradient-end: #d9e2ec;
+  --text-color: #1e293b;
+  --card-bg: rgba(255, 255, 255, 0.6);
+  --card-border: rgba(255, 255, 255, 0.3);
+  --card-hover-bg: rgba(255, 255, 255, 0.8);
+  --shadow-color: rgba(0, 0, 0, 0.1);
+  --accent-color: #38bdf8;
+  --accent-glow: rgba(56, 189, 248, 0.3);
+  --status-available: #10b981;
+  --status-unavailable: #ef4444;
+  --status-unknown: #9ca3af;
 }
 
-/* Container */
+/* Dark theme override */
+body.dark {
+  --bg-gradient-start: #0f172a;
+  --bg-gradient-end: #1e293b;
+  --text-color: #ffffff;
+  --card-bg: rgba(255, 255, 255, 0.06);
+  --card-border: rgba(255, 255, 255, 0.08);
+  --card-hover-bg: rgba(255, 255, 255, 0.1);
+  --shadow-color: rgba(0, 0, 0, 0.4);
+  --accent-glow: rgba(56, 189, 248, 0.2);
+}
+
+/* =============================================
+   RESET & BASE
+   ============================================= */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  background: linear-gradient(135deg, var(--bg-gradient-start), var(--bg-gradient-end));
+  color: var(--text-color);
+  min-height: 100vh;
+  overflow-x: hidden;
+  transition: background 0.3s ease, color 0.3s ease;
+  /* Fade transition for navigation */
+  transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1), background 0.3s ease;
+}
+
+body.fade-out {
+  opacity: 0;
+}
+
+/* =============================================
+   CONTROLS (Theme toggle & Accent picker)
+   ============================================= */
+.controls {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  display: flex;
+  gap: 12px;
+  z-index: 100;
+}
+
+.control-btn {
+  background: var(--card-bg);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--card-border);
+  border-radius: 40px;
+  padding: 10px 18px;
+  color: var(--text-color);
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s;
+  box-shadow: 0 4px 8px var(--shadow-color);
+}
+
+.control-btn:hover {
+  background: var(--card-hover-bg);
+  transform: scale(1.02);
+}
+
+.accent-picker {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--card-bg);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--card-border);
+  border-radius: 40px;
+  padding: 6px 14px;
+  box-shadow: 0 4px 8px var(--shadow-color);
+}
+
+.accent-picker label {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-color);
+}
+
+#accentColor {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--card-border);
+  border-radius: 50%;
+  cursor: pointer;
+  background: transparent;
+}
+
+#accentColor::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+#accentColor::-webkit-color-swatch {
+  border: none;
+  border-radius: 50%;
+}
+
+/* =============================================
+   MAIN CONTAINER
+   ============================================= */
 .container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 5rem 1.5rem 3rem;
   text-align: center;
-  padding: 40px 20px;
   position: relative;
   z-index: 2;
 }
 
-/* Title */
 h1 {
-  font-size: 40px;
-  margin-bottom: 30px;
+  font-size: clamp(2.5rem, 8vw, 4rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin-bottom: 2.5rem;
+  text-shadow: 0 4px 12px var(--shadow-color);
+  animation: fadeInDown 0.6s ease-out;
 }
 
-/* Cards layout */
+@keyframes fadeInDown {
+  0% { opacity: 0; transform: translateY(-20px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+/* =============================================
+   CARD GRID (Drag & Drop enabled)
+   ============================================= */
 .cards {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 20px;
+  align-items: stretch;
+  gap: 1.8rem;
 }
 
-/* Card */
+/* =============================================
+   INDIVIDUAL CARD
+   ============================================= */
 .card {
-  background: rgba(255,255,255,0.08);
-  backdrop-filter: blur(10px);
-  border-radius: 20px;
-  padding: 25px;
-  width: 250px;
-  cursor: pointer;
-  transition: 0.3s;
   position: relative;
+  background: var(--card-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--card-border);
+  border-radius: 28px;
+  padding: 2rem 1.8rem;
+  width: 260px;
+  cursor: grab;
+  user-select: none;
+  transition: all 0.3s cubic-bezier(0.2, 0, 0, 1);
   overflow: hidden;
+  box-shadow: 0 8px 20px var(--shadow-color);
 }
 
-/* Hover effect */
+.card:active {
+  cursor: grabbing;
+}
+
+.card:focus-visible {
+  outline: 3px solid var(--accent-color);
+  outline-offset: 4px;
+  box-shadow: 0 0 0 4px var(--accent-glow);
+}
+
 .card:hover {
-  transform: translateY(-10px) scale(1.05);
+  transform: translateY(-8px) scale(1.02);
+  background: var(--card-hover-bg);
+  border-color: var(--accent-color);
+  box-shadow: 0 20px 30px -10px var(--shadow-color);
 }
 
-/* Icon */
+/* SortableJS ghost (the element being dragged) */
+.sortable-ghost {
+  opacity: 0.4;
+  background: var(--accent-color);
+  border: 2px dashed var(--accent-color);
+}
+
+.sortable-drag {
+  box-shadow: 0 20px 30px -10px var(--shadow-color);
+  transform: rotate(2deg);
+}
+
+/* =============================================
+   CARD CONTENT
+   ============================================= */
 .icon {
-  font-size: 40px;
-  margin-bottom: 10px;
+  font-size: 3.5rem;
+  line-height: 1.2;
+  margin-bottom: 1rem;
+  filter: drop-shadow(0 4px 6px var(--shadow-color));
 }
 
-/* Ripple effect */
+.card h2 {
+  font-size: 1.6rem;
+  font-weight: 600;
+  margin: 0.75rem 0 0.5rem;
+  letter-spacing: -0.01em;
+}
+
+.card p {
+  font-size: 0.95rem;
+  opacity: 0.8;
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* =============================================
+   STATUS BADGE (Activity indicator)
+   ============================================= */
+.status-badge {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background-color: var(--status-unknown);
+  border: 2px solid var(--card-bg);
+  box-shadow: 0 0 0 1px var(--card-border);
+  transition: background-color 0.2s;
+  cursor: help;
+}
+
+.status-badge[data-status="available"] {
+  background-color: var(--status-available);
+}
+
+.status-badge[data-status="unavailable"] {
+  background-color: var(--status-unavailable);
+}
+
+/* =============================================
+   RIPPLE EFFECT
+   ============================================= */
 .ripple {
   position: absolute;
   border-radius: 50%;
+  background: radial-gradient(circle, var(--accent-color) 0%, transparent 70%);
   transform: scale(0);
-  animation: ripple 600ms linear;
-  background: rgba(255,255,255,0.4);
+  animation: ripple-animation 0.6s ease-out forwards;
+  pointer-events: none;
 }
 
-@keyframes ripple {
+@keyframes ripple-animation {
   to {
     transform: scale(4);
     opacity: 0;
   }
 }
 
-/* Page fade animation */
-body.fade-out {
-  opacity: 0;
-  transition: opacity 0.4s ease;
-}
-
-/* Floating emojis */
+/* =============================================
+   FLOATING BACKGROUND EMOJIS (with parallax)
+   ============================================= */
 .floating {
   position: fixed;
   top: 0;
@@ -82,18 +289,63 @@ body.fade-out {
   width: 100%;
   height: 100%;
   pointer-events: none;
+  z-index: 1;
   overflow: hidden;
-  z-index: 0;
 }
 
 .floating span {
   position: absolute;
-  font-size: 24px;
-  animation: float 6s infinite ease-in-out;
-  opacity: 0.7;
+  font-size: 2rem;
+  opacity: 0.55;
+  text-shadow: 0 0 12px var(--shadow-color);
+  will-change: transform;
+  transition: transform 0.05s linear;
+  /* Base float animation still applies, but will be overridden by parallax on mousemove */
+  animation: float 8s infinite ease-in-out;
 }
 
 @keyframes float {
-  0%, 100% { transform: translateY(0px);}
-  50% { transform: translateY(-20px);}
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-24px) rotate(2deg); }
+}
+
+/* =============================================
+   RESPONSIVE
+   ============================================= */
+@media (max-width: 640px) {
+  .container {
+    padding: 6rem 1rem 2rem;
+  }
+
+  .card {
+    width: 100%;
+    max-width: 320px;
+  }
+
+  .controls {
+    top: 10px;
+    right: 10px;
+  }
+
+  .floating span {
+    font-size: 1.6rem;
+  }
+}
+
+/* =============================================
+   PREFERS REDUCED MOTION
+   ============================================= */
+@media (prefers-reduced-motion: reduce) {
+  body,
+  .card,
+  .floating span,
+  .ripple,
+  h1 {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  .floating span {
+    animation: none !important;
+  }
 }
