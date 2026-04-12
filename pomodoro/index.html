@@ -26,7 +26,7 @@
     <div class="main-grid">
       <section class="timer-section">
         <div class="timer-card glass" id="timer-card">
-          <!-- Extra time counter (hidden by default) -->
+          <!-- Extra time counter -->
           <div id="extra-time-container" style="display: none; margin: 10px 0; font-size: 14px; opacity: 0.8;">
             ⏱️ Extra time: <span id="extra-time-display">0:00</span>
           </div>
@@ -48,7 +48,6 @@
             <button id="timer-skip" class="secondary-btn">Skip</button>
           </div>
 
-          <!-- New: Log partial session button (visible when paused) -->
           <div id="log-partial-container" style="display: none; margin-top: 10px;">
             <button id="log-partial-btn" class="small-btn">📝 Log current progress</button>
           </div>
@@ -64,6 +63,10 @@
             <div class="stat-item">
               <span class="stat-value" id="today-pomodoros">0</span>
               <span class="stat-label">Today</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-value" id="half-pomodoros">0</span>
+              <span class="stat-label">Half</span>
             </div>
             <div class="stat-item">
               <span class="stat-value" id="streak-days">0</span>
@@ -150,8 +153,8 @@
           <div class="setting-group color-setting">
             <label>Accent color</label>
             <div class="color-bar-container">
-              <input type="color" id="set-accent" value="#ff6a00">
-              <div class="color-bar" id="color-bar" style="background: #ff6a00;"></div>
+              <input type="color" id="set-accent" value="#e53935">
+              <div class="color-bar" id="color-bar" style="background: #e53935;"></div>
             </div>
           </div>
           <div class="setting-group">
@@ -164,7 +167,6 @@
               <option value="gentle">Gentle</option>
             </select>
           </div>
-          <!-- New settings -->
           <div class="setting-group checkbox">
             <label class="checkbox-label">
               <input type="checkbox" id="set-extra-time"> Track extra time between sessions
@@ -220,7 +222,7 @@
       </div>
     </div>
 
-    <!-- Task Edit Modal (Delete button removed; deletion now via X on task item) -->
+    <!-- Task Edit Modal -->
     <div id="task-modal" class="modal">
       <div class="modal-content glass">
         <div class="modal-header">
@@ -245,16 +247,17 @@
         <div class="modal-footer">
           <button id="save-task-btn" class="primary-btn">Save</button>
         </div>
-        <!-- Task Detail Modal -->
-        <div id="task-detail-modal" class="modal">
-          <div class="modal-content glass">
-            <div class="modal-header">
-              <h2>Task Details</h2>
-              <button class="close-modal">&times;</button>
-            </div>
-            <div class="modal-body" id="task-detail-body"></div>
-          </div>
+      </div>
+    </div>
+
+    <!-- Task Detail Modal (view completed task info) -->
+    <div id="task-detail-modal" class="modal">
+      <div class="modal-content glass">
+        <div class="modal-header">
+          <h2>Task Details</h2>
+          <button class="close-modal">&times;</button>
         </div>
+        <div class="modal-body" id="task-detail-body"></div>
       </div>
     </div>
 
@@ -277,16 +280,14 @@
       </div>
     </div>
 
-    <!-- Session Detail Modal (for viewing interruptions) -->
+    <!-- Session Detail Modal -->
     <div id="session-detail-modal" class="modal">
       <div class="modal-content glass">
         <div class="modal-header">
           <h2>Session Details</h2>
           <button class="close-modal">&times;</button>
         </div>
-        <div class="modal-body" id="session-detail-body">
-          <!-- filled dynamically -->
-        </div>
+        <div class="modal-body" id="session-detail-body"></div>
       </div>
     </div>
 
@@ -307,55 +308,44 @@
         <button id="close-work-overlay" class="primary-btn">Start Working</button>
       </div>
     </div>
-  </div>
 
-  <!-- Partial Session Options Modal -->
-  <div id="partial-options-modal" class="modal">
-    <div class="modal-content glass">
-      <div class="modal-header">
-        <h2>Log Partial Session</h2>
-        <button class="close-modal">&times;</button>
-      </div>
-      <div class="modal-body">
-        <p>You paused with <span id="partial-time-left"></span> remaining.</p>
-        <p>How would you like to proceed?</p>
-        <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 20px;">
-          <button id="partial-reset-option" class="secondary-btn">Reset Timer (log elapsed)</button>
-          <button id="partial-complete-option" class="primary-btn">Complete Timer (log remaining later)</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Partial Task Modal -->
-  <div id="partial-task-modal" class="modal">
-    <div class="modal-content glass">
-      <div class="modal-header">
-        <h2>Apply to Task?</h2>
-        <button class="close-modal">&times;</button>
-      </div>
-      <div class="modal-body">
-        <p>Do you want to count this partial session toward the active task?</p>
-        <div style="display: flex; flex-direction: column; gap: 10px;">
-          <button id="partial-half-btn" class="secondary-btn">Count as half Pomodoro (½)</button>
-          <button id="partial-full-btn" class="secondary-btn">Count as full Pomodoro</button>
-          <button id="partial-none-btn" class="secondary-btn">Do not apply</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Task Detail Modal -->
-    <div id="task-detail-modal" class="modal">
+    <!-- Partial Session Options Modal -->
+    <div id="partial-options-modal" class="modal">
       <div class="modal-content glass">
         <div class="modal-header">
-          <h2>Task Details</h2>
+          <h2>Log Partial Session</h2>
           <button class="close-modal">&times;</button>
         </div>
-        <div class="modal-body" id="task-detail-body"></div>
+        <div class="modal-body">
+          <p>You paused with <span id="partial-time-left"></span> remaining.</p>
+          <p>How would you like to proceed?</p>
+          <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 20px;">
+            <button id="partial-reset-option" class="secondary-btn">Reset Timer (log elapsed)</button>
+            <button id="partial-complete-option" class="primary-btn">Complete Timer (log remaining later)</button>
+          </div>
+        </div>
       </div>
     </div>
-  
+
+    <!-- Partial Task Modal -->
+    <div id="partial-task-modal" class="modal">
+      <div class="modal-content glass">
+        <div class="modal-header">
+          <h2>Apply to Task?</h2>
+          <button class="close-modal">&times;</button>
+        </div>
+        <div class="modal-body">
+          <p>Do you want to count this partial session toward the active task?</p>
+          <div style="display: flex; flex-direction: column; gap: 10px;">
+            <button id="partial-half-btn" class="secondary-btn">Count as half Pomodoro (½)</button>
+            <button id="partial-full-btn" class="secondary-btn">Count as full Pomodoro</button>
+            <button id="partial-none-btn" class="secondary-btn">Do not apply</button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
+
   <script src="script.js"></script>
 </body>
 </html>
