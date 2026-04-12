@@ -363,49 +363,104 @@ checkLinkBtn.addEventListener('click', () => {
 });
 
 // =============================================
-// FIXED: QR CODE GENERATOR
+// FIXED: QR CODE GENERATOR (Robust Loading)
 // =============================================
+
+// Helper to dynamically load the QRCode library if missing
+function ensureQRCodeLibrary(callback) {
+  if (typeof QRCode !== 'undefined') {
+    callback();
+    return;
+  }
+  // Alternative global name
+  if (typeof window.qrcode !== 'undefined') {
+    window.QRCode = window.qrcode;
+    callback();
+    return;
+  }
+  // Try to load from CDN
+  const script = document.createElement('script');
+  script.src = 'https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js';
+  script.onload = () => {
+    if (typeof QRCode !== 'undefined') callback();
+    else if (typeof window.qrcode !== 'undefined') {
+      window.QRCode = window.qrcode;
+      callback();
+    } else {
+      callback(new Error('Library failed to initialize'));
+    }
+  };
+  script.onerror = () => callback(new Error('CDN unreachable'));
+  document.head.appendChild(script);
+}
+
+// QR Generation with fallback to API
+function generateQRCode(text, onSuccess, onError) {
+  // Try using library first
+  ensureQRCodeLibrary((err) => {
+    if (!err) {
+      // Library available
+      QRCode.toDataURL(text, { width: 200, margin: 2, errorCorrectionLevel: 'M' }, (err2, url) => {
+        if (err2) {
+          // Library failed, fallback to API
+          fallbackQRAPI(text, onSuccess, onError);
+        } else {
+          // Success with library
+          const img = new Image();
+          img.onload = () => onSuccess(img);
+          img.onerror = () => onError('Image load failed');
+          img.src = url;
+        }
+      });
+    } else {
+      // Library not available, use API
+      fallbackQRAPI(text, onSuccess, onError);
+    }
+  });
+}
+
+function fallbackQRAPI(text, onSuccess, onError) {
+  const apiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(text)}`;
+  const img = new Image();
+  img.crossOrigin = 'Anonymous';
+  img.onload = () => onSuccess(img);
+  img.onerror = () => onError('QR API failed');
+  img.src = apiUrl;
+}
+
 generateQrBtn.addEventListener('click', () => {
   const text = qrUrlInput.value.trim();
-  if (!text) { alert('Enter text/URL'); return; }
+  if (!text) {
+    alert('Enter text or URL');
+    return;
+  }
 
   qrPlaceholder.style.display = 'flex';
   qrPlaceholder.textContent = 'Generating...';
   qrCanvas.style.display = 'none';
   downloadQrBtn.disabled = true;
 
-  // Clear canvas
   const ctx = qrCanvas.getContext('2d');
   ctx.clearRect(0, 0, qrCanvas.width, qrCanvas.height);
 
-  // Use toDataURL for reliability
-  if (typeof QRCode === 'undefined') {
-    qrPlaceholder.textContent = 'QR library failed to load.';
-    return;
-  }
-
-  QRCode.toDataURL(text, { width: 200, margin: 2, errorCorrectionLevel: 'M' }, (err, url) => {
-    if (err) {
-      console.error(err);
-      qrPlaceholder.textContent = 'Failed to generate QR.';
-      return;
-    }
-    const img = new Image();
-    img.onload = () => {
+  generateQRCode(text,
+    (img) => {
+      // Success: draw image to canvas
       qrCanvas.width = img.width;
       qrCanvas.height = img.height;
       ctx.drawImage(img, 0, 0);
       qrCanvas.style.display = 'block';
       qrPlaceholder.style.display = 'none';
       downloadQrBtn.disabled = false;
-    };
-    img.onerror = () => {
-      qrPlaceholder.textContent = 'Failed to load QR image.';
-    };
-    img.src = url;
-  });
+    },
+    (errorMsg) => {
+      console.error(errorMsg);
+      qrPlaceholder.textContent = 'QR generation failed. Check console.';
+    }
+  );
 });
 
+// Download remains the same
 downloadQrBtn.addEventListener('click', () => {
   const link = document.createElement('a');
   link.download = 'qrcode.png';
