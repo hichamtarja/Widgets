@@ -2,18 +2,86 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Streak Counter Widgets</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🔥 Streak Counter · Dashboard</title>
   <link rel="stylesheet" href="style.css">
 </head>
-<a href="../index.html" class="home-btn">🏠 Home</a>
 <body class="dashboard-page">
+  <!-- Home button -->
+  <a href="../index.html" class="home-btn">🏠 Home</a>
+
+  <!-- Main Dashboard Container -->
   <div class="dashboard">
-    <h1>🔥 Streak Counter Widgets</h1>
-    <p class="subtitle">Create, edit, open, and delete your saved streak widgets.</p>
+    <header class="dashboard-header">
+      <div>
+        <h1>🔥 Streak Counter</h1>
+        <p class="subtitle">Create, track, and manage your daily consistency streaks.</p>
+      </div>
+      <div class="header-actions">
+        <button id="export-data-btn" class="icon-btn" title="Export all data">📤</button>
+        <button id="import-data-btn" class="icon-btn" title="Import data">📥</button>
+        <input type="file" id="import-file-input" accept=".json" style="display:none">
+      </div>
+    </header>
 
-    <button id="create-widget-btn" class="primary-btn">+ Create new widget</button>
+    <!-- Stats Cards -->
+    <div class="stats-row">
+      <div class="stat-card">
+        <span class="stat-icon">📊</span>
+        <div class="stat-content">
+          <span class="stat-value" id="total-widgets">0</span>
+          <span class="stat-label">Total Widgets</span>
+        </div>
+      </div>
+      <div class="stat-card">
+        <span class="stat-icon">🔥</span>
+        <div class="stat-content">
+          <span class="stat-value" id="total-streaks">0</span>
+          <span class="stat-label">Total Streaks</span>
+        </div>
+      </div>
+      <div class="stat-card">
+        <span class="stat-icon">🏆</span>
+        <div class="stat-content">
+          <span class="stat-value" id="longest-streak">0</span>
+          <span class="stat-label">Longest Streak</span>
+        </div>
+      </div>
+    </div>
 
+    <!-- Controls: Search, Sort, Create -->
+    <div class="controls-bar">
+      <div class="search-wrapper">
+        <input type="text" id="search-input" placeholder="🔍 Search widgets..." class="search-input">
+      </div>
+      <div class="sort-wrapper">
+        <label for="sort-select">Sort by:</label>
+        <select id="sort-select" class="sort-select">
+          <option value="name-asc">Name (A-Z)</option>
+          <option value="name-desc">Name (Z-A)</option>
+          <option value="streak-desc">Streak (High-Low)</option>
+          <option value="streak-asc">Streak (Low-High)</option>
+          <option value="date-desc">Newest First</option>
+          <option value="date-asc">Oldest First</option>
+        </select>
+      </div>
+      <button id="create-widget-btn" class="primary-btn">+ Create New Widget</button>
+    </div>
+
+    <!-- Widget Grid -->
     <div id="widget-list" class="widget-list"></div>
+  </div>
+
+  <!-- Custom Confirm Modal -->
+  <div id="confirm-modal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <h3>Confirm Deletion</h3>
+      <p id="confirm-message">Are you sure you want to delete this widget?</p>
+      <div class="modal-actions">
+        <button id="confirm-cancel" class="secondary-btn">Cancel</button>
+        <button id="confirm-ok" class="danger-btn">Delete</button>
+      </div>
+    </div>
   </div>
 
   <script src="script.js"></script>
