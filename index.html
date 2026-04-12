@@ -1,56 +1,92 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>Widget Hub</title>
-<link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Widget Hub · Dashboard</title>
+  <!-- SortableJS for drag-and-drop reordering -->
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-
-<div class="floating">
-  <span>🌟</span>
-  <span>🔥</span>
-  <span>🎞</span>
-  <span>✨</span>
-  <span>💫</span>
-  <span>😎</span>
-  <span>⌛</span>
-  <span>🕺</span>
-  <span>⚡</span>
-</div>
-
-<div class="container">
-  <h1>My Widget Hub</h1>
-
-  <div class="cards">
-
-    <div class="card" onclick="goTo(event, 'image_slider/index.html')">
-      <div class="icon">🎞</div>
-      <h2>Image Slider</h2>
-      <p>View your favorite GIFs in a clean slider.</p>
-    </div>
-
-    <div class="card" onclick="goTo(event, 'streak/index.html')">
-      <div class="icon">🔥</div>
-      <h2>Streak Counter</h2>
-      <p>Track your daily consistency streak.</p>
-    </div>
-
-    <div class="card" onclick="goTo(event, 'date_counter/index.html')">
-      <div class="icon">⏳</div>
-      <h2>Date Counter</h2>
-      <p>Live countdown between two dates.</p>
-    </div>
-
-    <div class="card" onclick="goTo(event, 'pomodoro/index.html')">
-      <div class="icon">🍅</div>
-      <h2>Pomodoro Suite · Focus & Tasks</h2>
-      <p>Time-management</p>
-    </div>
-
+  <!-- Floating decorative emojis (now with parallax interaction) -->
+  <div class="floating" id="floatingEmojis" aria-hidden="true">
+    <span>🌟</span>
+    <span>🔥</span>
+    <span>🎞</span>
+    <span>✨</span>
+    <span>💫</span>
+    <span>😎</span>
+    <span>⌛</span>
+    <span>🕺</span>
+    <span>⚡</span>
   </div>
-</div>
 
-<script src="script.js"></script>
+  <!-- Controls Bar: Theme toggle & Accent color picker -->
+  <div class="controls">
+    <button id="themeToggle" class="control-btn" aria-label="Toggle dark/light mode">
+      <span class="theme-icon">🌙</span>
+      <span class="theme-text">Dark</span>
+    </button>
+    <div class="accent-picker">
+      <label for="accentColor">Accent</label>
+      <input type="color" id="accentColor" value="#38bdf8">
+    </div>
+  </div>
+
+  <!-- Main dashboard container -->
+  <main class="container">
+    <h1>✨ My Widget Hub</h1>
+
+    <!-- Card grid (drag-and-drop enabled) -->
+    <div class="cards" id="cardsContainer">
+      <!-- Each card now includes a status badge and data attributes -->
+      <div class="card"
+           role="button"
+           tabindex="0"
+           data-url="image_slider/index.html"
+           data-id="image_slider">
+        <span class="status-badge" data-status="unknown" title="Checking availability..."></span>
+        <div class="icon" aria-hidden="true">🎞</div>
+        <h2>Image Slider</h2>
+        <p>View your favorite GIFs in a clean slider.</p>
+      </div>
+
+      <div class="card"
+           role="button"
+           tabindex="0"
+           data-url="streak/index.html"
+           data-id="streak">
+        <span class="status-badge" data-status="unknown" title="Checking availability..."></span>
+        <div class="icon" aria-hidden="true">🔥</div>
+        <h2>Streak Counter</h2>
+        <p>Track your daily consistency streak.</p>
+      </div>
+
+      <div class="card"
+           role="button"
+           tabindex="0"
+           data-url="date_counter/index.html"
+           data-id="date_counter">
+        <span class="status-badge" data-status="unknown" title="Checking availability..."></span>
+        <div class="icon" aria-hidden="true">⏳</div>
+        <h2>Date Counter</h2>
+        <p>Live countdown between two dates.</p>
+      </div>
+
+      <div class="card"
+           role="button"
+           tabindex="0"
+           data-url="pomodoro/index.html"
+           data-id="pomodoro">
+        <span class="status-badge" data-status="unknown" title="Checking availability..."></span>
+        <div class="icon" aria-hidden="true">🍅</div>
+        <h2>Pomodoro Suite</h2>
+        <p>Focus & Tasks · Time‑management</p>
+      </div>
+    </div>
+  </main>
+
+  <script src="script.js"></script>
 </body>
 </html>
