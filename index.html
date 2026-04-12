@@ -4,88 +4,97 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Widget Hub · Dashboard</title>
-  <!-- SortableJS for drag-and-drop reordering -->
+  <!-- SortableJS for drag-and-drop -->
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+  <!-- Confetti for celebrations (optional sound effect trigger) -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1"></script>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <!-- Floating decorative emojis (now with parallax interaction) -->
+  <!-- Floating emojis (now with hover + parallax) -->
   <div class="floating" id="floatingEmojis" aria-hidden="true">
-    <span>🌟</span>
-    <span>🔥</span>
-    <span>🎞</span>
-    <span>✨</span>
-    <span>💫</span>
-    <span>😎</span>
-    <span>⌛</span>
-    <span>🕺</span>
-    <span>⚡</span>
+    <span data-emoji="🌟">🌟</span>
+    <span data-emoji="🔥">🔥</span>
+    <span data-emoji="🎞">🎞</span>
+    <span data-emoji="✨">✨</span>
+    <span data-emoji="💫">💫</span>
+    <span data-emoji="😎">😎</span>
+    <span data-emoji="⌛">⌛</span>
+    <span data-emoji="🕺">🕺</span>
+    <span data-emoji="⚡">⚡</span>
   </div>
 
-  <!-- Controls Bar: Theme toggle & Accent color picker -->
+  <!-- Controls Bar -->
   <div class="controls">
+    <div class="greeting-clock" id="greetingClock"></div>
+    
     <button id="themeToggle" class="control-btn" aria-label="Toggle dark/light mode">
       <span class="theme-icon">🌙</span>
       <span class="theme-text">Dark</span>
     </button>
+    
     <div class="accent-picker">
       <label for="accentColor">Accent</label>
       <input type="color" id="accentColor" value="#38bdf8">
     </div>
+
+    <div class="layout-controls">
+      <button id="exportLayoutBtn" class="control-btn" title="Export layout">📤 Export</button>
+      <button id="importLayoutBtn" class="control-btn" title="Import layout">📥 Import</button>
+      <input type="file" id="importFileInput" accept=".json" style="display:none">
+      <button id="resetLayoutBtn" class="control-btn" title="Reset to default">🔄 Reset</button>
+    </div>
+
+    <button id="soundToggle" class="control-btn" aria-label="Toggle sound effects">
+      <span class="sound-icon">🔇</span>
+    </button>
+  </div>
+
+  <!-- Category filter chips -->
+  <div class="category-filter">
+    <span class="filter-label">Filter:</span>
+    <div class="filter-chips" id="filterChips">
+      <!-- Dynamically populated by JS -->
+    </div>
+  </div>
+
+  <!-- Sort options -->
+  <div class="sort-options">
+    <span>Sort by:</span>
+    <button data-sort="default" class="sort-btn active">Default</button>
+    <button data-sort="most-used" class="sort-btn">Most Used</button>
+    <button data-sort="recent" class="sort-btn">Recently Used</button>
   </div>
 
   <!-- Main dashboard container -->
   <main class="container">
     <h1>✨ My Widget Hub</h1>
 
-    <!-- Card grid (drag-and-drop enabled) -->
+    <!-- Card grid -->
     <div class="cards" id="cardsContainer">
-      <!-- Each card now includes a status badge and data attributes -->
-      <div class="card"
-           role="button"
-           tabindex="0"
-           data-url="image_slider/index.html"
-           data-id="image_slider">
-        <span class="status-badge" data-status="unknown" title="Checking availability..."></span>
-        <div class="icon" aria-hidden="true">🎞</div>
-        <h2>Image Slider</h2>
-        <p>View your favorite GIFs in a clean slider.</p>
-      </div>
-
-      <div class="card"
-           role="button"
-           tabindex="0"
-           data-url="streak/index.html"
-           data-id="streak">
-        <span class="status-badge" data-status="unknown" title="Checking availability..."></span>
-        <div class="icon" aria-hidden="true">🔥</div>
-        <h2>Streak Counter</h2>
-        <p>Track your daily consistency streak.</p>
-      </div>
-
-      <div class="card"
-           role="button"
-           tabindex="0"
-           data-url="date_counter/index.html"
-           data-id="date_counter">
-        <span class="status-badge" data-status="unknown" title="Checking availability..."></span>
-        <div class="icon" aria-hidden="true">⏳</div>
-        <h2>Date Counter</h2>
-        <p>Live countdown between two dates.</p>
-      </div>
-
-      <div class="card"
-           role="button"
-           tabindex="0"
-           data-url="pomodoro/index.html"
-           data-id="pomodoro">
-        <span class="status-badge" data-status="unknown" title="Checking availability..."></span>
-        <div class="icon" aria-hidden="true">🍅</div>
-        <h2>Pomodoro Suite</h2>
-        <p>Focus & Tasks · Time‑management</p>
-      </div>
+      <!-- Cards will be dynamically rendered by JS for easier maintenance -->
     </div>
   </main>
+
+  <!-- Custom context menu (hidden by default) -->
+  <div id="contextMenu" class="context-menu">
+    <div class="context-item" data-action="open">Open</div>
+    <div class="context-item" data-action="open-new-tab">Open in New Tab</div>
+    <div class="context-item" data-action="copy-link">Copy Link</div>
+    <div class="context-divider"></div>
+    <div class="context-item" data-action="edit-note">Edit Note</div>
+    <div class="context-item" data-action="clear-note">Clear Note</div>
+  </div>
+
+  <!-- Note editor modal (hidden) -->
+  <div id="noteModal" class="modal">
+    <div class="modal-content">
+      <span class="close">&times;</span>
+      <h3>Edit Note</h3>
+      <textarea id="noteInput" rows="4" placeholder="Add a personal note..."></textarea>
+      <button id="saveNoteBtn">Save</button>
+    </div>
+  </div>
 
   <script src="script.js"></script>
 </body>
