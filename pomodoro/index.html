@@ -145,9 +145,11 @@
             <label>Long break interval (Pomodoros)</label>
             <input type="number" id="set-interval" min="1" max="10" value="4">
           </div>
+          <!-- Color picker group: add swatch -->
           <div class="setting-group">
             <label>Accent color</label>
             <input type="color" id="set-accent" value="#ff6a00">
+            <span id="accent-swatch" class="color-swatch"></span>
           </div>
           <div class="setting-group">
             <label>Notification sound</label>
@@ -171,6 +173,12 @@
           <div class="setting-group checkbox">
             <label>
               <input type="checkbox" id="set-fullscreen-break"> Full‑screen break reminder
+            </label>
+          </div>
+          <!-- Inside settings modal body, after fullscreen break checkbox -->
+          <div class="setting-group checkbox">
+            <label>
+              <input type="checkbox" id="set-fullscreen-work"> Full‑screen "Back to work" reminder
             </label>
           </div>
         </div>
@@ -234,6 +242,14 @@
         <h2>☕ Time for a break!</h2>
         <p>Step away, stretch, and rest your eyes.</p>
         <button id="close-break-overlay" class="primary-btn">I'm back</button>
+      </div>
+    </div>
+    <!-- Full‑screen work overlay -->
+    <div id="work-overlay" class="fullscreen-overlay" style="display: none;">
+      <div class="overlay-content">
+        <h2>💪 Back to Work!</h2>
+        <p>Your break is over. Let's get focused.</p>
+        <button id="close-work-overlay" class="primary-btn">Start Working</button>
       </div>
     </div>
   </div>
