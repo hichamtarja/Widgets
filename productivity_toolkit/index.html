@@ -6,8 +6,7 @@
   <title>Productivity Toolkit · Bookmarks & Security</title>
   <!-- SortableJS for drag-and-drop reordering -->
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
-  <!-- QR Code library -->
-  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+  <!-- QR Code library (fallback, but we use API) -->
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
   <link rel="stylesheet" href="style.css">
 </head>
@@ -15,10 +14,10 @@
   <div class="app-container">
     <header>
       <h1>🧰 Productivity Toolkit</h1>
-      <p class="subtitle">Bookmarks · Passwords · Link Checker · QR Codes</p>
+      <p class="subtitle">Bookmarks · Passwords · Link Checker · QR · Encryption</p>
     </header>
 
-    <!-- Top row: Bookmark Manager (main) + Password Generator -->
+    <!-- Row 1: Bookmark Manager (left) + Link Checker & QR Generator (right stacked) -->
     <div class="row">
       <!-- Bookmark Manager Panel -->
       <section class="panel panel-large" id="bookmark-panel">
@@ -46,7 +45,7 @@
           <button id="showAddBookmarkBtn" class="btn btn-primary">+ Add Bookmark</button>
         </div>
 
-        <!-- Add/Edit Bookmark Form (hidden by default) -->
+        <!-- Add/Edit Bookmark Form -->
         <div id="bookmarkFormContainer" class="form-container hidden">
           <h3 id="formTitle">Add Bookmark</h3>
           <form id="bookmarkForm">
@@ -75,8 +74,83 @@
         <div id="noBookmarksMsg" class="empty-message">No bookmarks yet. Add one to get started!</div>
       </section>
 
+      <!-- Right Column: Link Checker + QR Generator stacked -->
+      <div class="panel-stack">
+        <!-- Link Checker Panel -->
+        <section class="panel panel-small">
+          <div class="panel-header">
+            <h2>🔗 Link Checker</h2>
+          </div>
+          <div class="link-checker">
+            <div class="input-group">
+              <input type="url" id="linkUrlInput" placeholder="Enter URL to check..." value="https://">
+              <button id="checkLinkBtn" class="btn btn-primary">Check</button>
+              <button id="clearLinkBtn" class="btn btn-outline" title="Clear">🗑️</button>
+            </div>
+            <div id="linkResult" class="link-result">
+              <span class="status-indicator"></span>
+              <span class="status-text">Enter a URL above</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- QR Generator Panel -->
+        <section class="panel panel-small">
+          <div class="panel-header">
+            <h2>📱 QR Generator</h2>
+          </div>
+          <div class="qr-generator">
+            <div class="input-group">
+              <input type="url" id="qrUrlInput" placeholder="Enter URL or text..." value="https://">
+              <button id="generateQrBtn" class="btn btn-primary">Generate</button>
+              <button id="clearQrBtn" class="btn btn-outline" title="Clear">🗑️</button>
+            </div>
+            <div class="qr-result">
+              <canvas id="qrCanvas"></canvas>
+              <div id="qrPlaceholder" class="qr-placeholder">Your QR code will appear here</div>
+              <button id="downloadQrBtn" class="btn btn-outline" disabled>⬇ Download PNG</button>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <!-- Row 2: QR Scanner (full width) -->
+    <div class="row">
+      <section class="panel panel-full" id="scanner-panel">
+        <div class="panel-header">
+          <h2>📷 QR Scanner</h2>
+        </div>
+        <div class="scanner-container">
+          <div class="scanner-modes">
+            <button id="cameraScanBtn" class="btn btn-primary">📸 Scan from Camera</button>
+            <button id="uploadScanBtn" class="btn btn-outline">📁 Upload Image</button>
+            <button id="clearScannerBtn" class="btn btn-outline" title="Clear result">🗑️</button>
+            <input type="file" id="qrImageUpload" accept="image/*" style="display:none">
+          </div>
+          
+          <div id="cameraView" class="camera-view hidden">
+            <video id="qrVideo" autoplay playsinline></video>
+            <canvas id="qrCanvasScanner" style="display:none;"></canvas>
+            <button id="stopCameraBtn" class="btn btn-outline">Stop Camera</button>
+          </div>
+          
+          <div id="scanResult" class="scan-result hidden">
+            <span class="result-label">Decoded:</span>
+            <span id="decodedText" class="result-text"></span>
+            <div class="result-actions">
+              <button id="copyDecodedBtn" class="btn btn-small">📋 Copy</button>
+              <button id="openDecodedBtn" class="btn btn-small btn-primary">🔗 Open</button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- Row 3: Password Generator + Encryption Tool -->
+    <div class="row">
       <!-- Password Generator Panel -->
-      <section class="panel panel-small" id="password-panel">
+      <section class="panel panel-half">
         <div class="panel-header">
           <h2>🔐 Password Generator</h2>
         </div>
@@ -93,22 +167,12 @@
             <label for="passwordLength">Length: <span id="lengthValue">16</span></label>
             <input type="range" id="passwordLength" min="8" max="32" value="16">
           </div>
-          <div class="option-check">
-            <input type="checkbox" id="includeUppercase" checked> Uppercase
-          </div>
-          <div class="option-check">
-            <input type="checkbox" id="includeLowercase" checked> Lowercase
-          </div>
-          <div class="option-check">
-            <input type="checkbox" id="includeNumbers" checked> Numbers
-          </div>
-          <div class="option-check">
-            <input type="checkbox" id="includeSymbols"> Symbols
-          </div>
+          <div class="option-check"><input type="checkbox" id="includeUppercase" checked> Uppercase</div>
+          <div class="option-check"><input type="checkbox" id="includeLowercase" checked> Lowercase</div>
+          <div class="option-check"><input type="checkbox" id="includeNumbers" checked> Numbers</div>
+          <div class="option-check"><input type="checkbox" id="includeSymbols"> Symbols</div>
         </div>
         <button id="generatePasswordBtn" class="btn btn-primary btn-full">Generate Password</button>
-
-        <!-- Optional History -->
         <div class="history-section">
           <label class="history-toggle">
             <input type="checkbox" id="enableHistory"> Keep history (this session only)
@@ -117,76 +181,52 @@
           <button id="clearHistoryBtn" class="btn btn-outline btn-small hidden">Clear History</button>
         </div>
       </section>
-    </div>
 
-    <!-- Bottom row: Link Checker + QR Code Generator -->
-    <div class="row">
-      <!-- Link Checker Panel -->
+      <!-- Encryption Tool Panel -->
       <section class="panel panel-half">
         <div class="panel-header">
-          <h2>🔗 Link Checker</h2>
+          <h2>🔒 Encryption</h2>
         </div>
-        <div class="link-checker">
-          <div class="input-group">
-            <input type="url" id="linkUrlInput" placeholder="Enter URL to check..." value="https://">
-            <button id="checkLinkBtn" class="btn btn-primary">Check</button>
+        <div class="encryption-tool">
+          <div class="tab-buttons">
+            <button id="encryptTabBtn" class="tab-btn active">Encrypt</button>
+            <button id="decryptTabBtn" class="tab-btn">Decrypt</button>
           </div>
-          <div id="linkResult" class="link-result">
-            <span class="status-indicator"></span>
-            <span class="status-text">Enter a URL above</span>
+          <div id="encryptPanel" class="encrypt-panel">
+            <div class="form-group">
+              <label for="plaintextInput">Text to Encrypt</label>
+              <textarea id="plaintextInput" rows="3" placeholder="Enter text..."></textarea>
+            </div>
+            <div class="form-group">
+              <label for="encryptPassword">Password</label>
+              <input type="password" id="encryptPassword" placeholder="Enter password">
+            </div>
+            <button id="encryptBtn" class="btn btn-primary btn-full">Encrypt</button>
+            <div class="form-group">
+              <label for="ciphertextOutput">Encrypted (Base64)</label>
+              <textarea id="ciphertextOutput" rows="3" readonly placeholder="Result will appear here"></textarea>
+              <button id="copyCiphertextBtn" class="btn btn-outline btn-small" style="margin-top:8px;">📋 Copy</button>
+            </div>
+          </div>
+          <div id="decryptPanel" class="encrypt-panel hidden">
+            <div class="form-group">
+              <label for="ciphertextInput">Encrypted Text (Base64)</label>
+              <textarea id="ciphertextInput" rows="3" placeholder="Paste encrypted text..."></textarea>
+            </div>
+            <div class="form-group">
+              <label for="decryptPassword">Password</label>
+              <input type="password" id="decryptPassword" placeholder="Enter password">
+            </div>
+            <button id="decryptBtn" class="btn btn-primary btn-full">Decrypt</button>
+            <div class="form-group">
+              <label for="decryptedOutput">Decrypted Text</label>
+              <textarea id="decryptedOutput" rows="3" readonly placeholder="Result will appear here"></textarea>
+              <button id="copyDecryptedBtn" class="btn btn-outline btn-small" style="margin-top:8px;">📋 Copy</button>
+            </div>
           </div>
         </div>
       </section>
-
-      <!-- QR Code Generator Panel -->
-      <section class="panel panel-half">
-        <div class="panel-header">
-          <h2>📱 QR Code Generator</h2>
-        </div>
-        <div class="qr-generator">
-          <div class="input-group">
-            <input type="url" id="qrUrlInput" placeholder="Enter URL or text..." value="https://">
-            <button id="generateQrBtn" class="btn btn-primary">Generate</button>
-          </div>
-          <div class="qr-result">
-            <canvas id="qrCanvas"></canvas>
-            <div id="qrPlaceholder" class="qr-placeholder">Your QR code will appear here</div>
-            <button id="downloadQrBtn" class="btn btn-outline" disabled>⬇ Download PNG</button>
-          </div>
-        </div>
-      </section>
     </div>
-  </div>
-
-  <!-- New row: QR Scanner -->
-  <div class="row">
-    <section class="panel panel-full" id="scanner-panel">
-      <div class="panel-header">
-        <h2>📷 QR Scanner</h2>
-      </div>
-      <div class="scanner-container">
-        <div class="scanner-modes">
-          <button id="cameraScanBtn" class="btn btn-primary">📸 Scan from Camera</button>
-          <button id="uploadScanBtn" class="btn btn-outline">📁 Upload Image</button>
-          <input type="file" id="qrImageUpload" accept="image/*" style="display:none">
-        </div>
-        
-        <div id="cameraView" class="camera-view hidden">
-          <video id="qrVideo" autoplay playsinline></video>
-          <canvas id="qrCanvasScanner" style="display:none;"></canvas>
-          <button id="stopCameraBtn" class="btn btn-outline">Stop Camera</button>
-        </div>
-        
-        <div id="scanResult" class="scan-result hidden">
-          <span class="result-label">Decoded:</span>
-          <span id="decodedText" class="result-text"></span>
-          <div class="result-actions">
-            <button id="copyDecodedBtn" class="btn btn-small">📋 Copy</button>
-            <button id="openDecodedBtn" class="btn btn-small btn-primary">🔗 Open</button>
-          </div>
-        </div>
-      </div>
-    </section>
   </div>
 
   <script src="script.js"></script>
