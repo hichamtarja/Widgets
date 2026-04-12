@@ -604,3 +604,38 @@ body.focus-mode .exit-focus-btn {
   .timer-display { font-size: 48px; }
   body.focus-mode .timer-card { width: 95vw; transform: scale(1); }
 }
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(128, 128, 128, 0.1);
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--accent);
+  border-radius: 10px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
+  filter: brightness(1.2);
+}
+
+/* Fix blur on overlays */
+.fullscreen-overlay {
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  background: rgba(10, 10, 10, 0.7) !important; /* semi-transparent for blur effect */
+}
+body.light-mode .fullscreen-overlay {
+  background: rgba(245, 245, 247, 0.7) !important;
+}
+
+/* Partial session modal specific */
+#partial-options-modal .modal-content {
+  max-width: 400px;
+}
