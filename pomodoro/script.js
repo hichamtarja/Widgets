@@ -1,6 +1,6 @@
 // ======================== GLOBAL STATE & DOM ========================
-let timerInterval = null;       // setInterval for countdown
-let animationFrame = null;      // for canvas updates
+let timerInterval = null;
+let animationFrame = null;
 let currentSessionType = 'work';
 let sessionCount = 1;
 let timeLeft = 25 * 60;
@@ -8,15 +8,14 @@ let isRunning = false;
 let totalSessionTime = 25 * 60;
 let tickingInterval = null;
 let pendingInterruption = false;
-let partialMode = null;          // 'reset' or 'complete'
+let partialMode = null;
 let partialElapsedLogged = false;
 let currentSessionStart = null;
 
-// Shared AudioContext to prevent timer freeze
 let sharedAudioCtx = null;
 
 let todayPomodoros = 0;
-let halfPomodoros = 0;           // Count partial/half sessions
+let halfPomodoros = 0;
 let streakDays = 0;
 let lastActiveDate = null;
 let sessionsHistory = [];
@@ -35,14 +34,14 @@ let settings = {
   desktopNotify: true,
   fullscreenBreak: false,
   fullscreenWork: false,
-  accentColor: '#ff8c00',         // Orange default
+  accentColor: '#ff8c00',
   logSkipped: true,
   tickingSound: false,
   taskCompleteSound: true
 };
 
 const quotes = [
-  "Rest is not idleness.", 
+  "Rest is not idleness.",
   "Almost everything will work again if you unplug it for a few minutes.",
   "Your future self will thank you.",
   "Take a deep breath. You're doing great.",
@@ -60,9 +59,9 @@ const workQuotes = [
 let statsChart = null;
 let currentChartTab = 'daily';
 
-// DOM Elements
+// DOM Elements (ensure they exist in your HTML)
 const timerCanvas = document.getElementById('timer-canvas');
-const ctx = timerCanvas.getContext('2d');
+const ctx = timerCanvas?.getContext('2d');
 const minutesSpan = document.getElementById('timer-minutes');
 const secondsSpan = document.getElementById('timer-seconds');
 const sessionTypeLabel = document.getElementById('session-type-label');
@@ -72,7 +71,7 @@ const resetBtn = document.getElementById('timer-reset');
 const skipBtn = document.getElementById('timer-skip');
 const autoStartCheck = document.getElementById('auto-start-checkbox');
 const todayPomodorosSpan = document.getElementById('today-pomodoros');
-const halfPomodorosSpan = document.getElementById('half-pomodoros'); // optional
+const halfPomodorosSpan = document.getElementById('half-pomodoros');
 const streakDaysSpan = document.getElementById('streak-days');
 const quoteText = document.getElementById('quote-text');
 
@@ -94,11 +93,10 @@ const partialTimeLeftSpan = document.getElementById('partial-time-left');
 const partialResetOption = document.getElementById('partial-reset-option');
 const partialCompleteOption = document.getElementById('partial-complete-option');
 
-// Settings inputs
 const setWork = document.getElementById('set-work');
 const setShort = document.getElementById('set-short');
 const setLong = document.getElementById('set-long');
-const setInterval = document.getElementById('set-interval');
+const setIntervalInput = document.getElementById('set-interval');
 const setAccent = document.getElementById('set-accent');
 const colorBar = document.getElementById('color-bar');
 const setSound = document.getElementById('set-sound');
@@ -138,17 +136,26 @@ const themeToggle = document.getElementById('theme-toggle');
 const logPartialContainer = document.getElementById('log-partial-container');
 const logPartialBtn = document.getElementById('log-partial-btn');
 
+// ======================== HELPER ========================
+function escapeHtml(text) {
+  return String(text).replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  })[c]);
+}
+
 // ======================== THEME ========================
 function initTheme() {
   const savedTheme = localStorage.getItem('pomodoro_theme') || 'dark';
   document.body.classList.toggle('light-mode', savedTheme === 'light');
-  themeToggle.textContent = savedTheme === 'light' ? '☀️' : '🌙';
+  if (themeToggle) themeToggle.textContent = savedTheme === 'light' ? '☀️' : '🌙';
 }
-themeToggle.addEventListener('click', () => {
-  const isLight = document.body.classList.toggle('light-mode');
-  localStorage.setItem('pomodoro_theme', isLight ? 'light' : 'dark');
-  themeToggle.textContent = isLight ? '☀️' : '🌙';
-});
+if (themeToggle) {
+  themeToggle.addEventListener('click', () => {
+    const isLight = document.body.classList.toggle('light-mode');
+    localStorage.setItem('pomodoro_theme', isLight ? 'light' : 'dark');
+    themeToggle.textContent = isLight ? '☀️' : '🌙';
+  });
+}
 
 // ======================== STORAGE ========================
 function loadFromStorage() {
@@ -172,32 +179,34 @@ function loadFromStorage() {
   updateQuickStats();
   drawTimer(1);
 }
+
 function saveToStorage() {
   const data = { settings, tasks, sessions: sessionsHistory, todayPomodoros, halfPomodoros, streakDays, lastActiveDate, activeTaskId };
   localStorage.setItem('pomodoro_suite', JSON.stringify(data));
 }
+
 function applySettingsToUI() {
-  setWork.value = settings.workDuration;
-  setShort.value = settings.shortBreak;
-  setLong.value = settings.longBreak;
-  setInterval.value = settings.longBreakInterval;
-  setAccent.value = settings.accentColor;
-  colorBar.style.backgroundColor = settings.accentColor;
-  setSound.value = settings.sound;
-  setVoice.checked = settings.voiceEnabled;
-  setDesktopNotify.checked = settings.desktopNotify;
-  setFullscreenBreak.checked = settings.fullscreenBreak;
-  setFullscreenWork.checked = settings.fullscreenWork;
-  setLogSkipped.checked = settings.logSkipped;
-  setTickingSound.checked = settings.tickingSound;
+  if (setWork) setWork.value = settings.workDuration;
+  if (setShort) setShort.value = settings.shortBreak;
+  if (setLong) setLong.value = settings.longBreak;
+  if (setIntervalInput) setIntervalInput.value = settings.longBreakInterval;
+  if (setAccent) setAccent.value = settings.accentColor;
+  if (colorBar) colorBar.style.backgroundColor = settings.accentColor;
+  if (setSound) setSound.value = settings.sound;
+  if (setVoice) setVoice.checked = settings.voiceEnabled;
+  if (setDesktopNotify) setDesktopNotify.checked = settings.desktopNotify;
+  if (setFullscreenBreak) setFullscreenBreak.checked = settings.fullscreenBreak;
+  if (setFullscreenWork) setFullscreenWork.checked = settings.fullscreenWork;
+  if (setLogSkipped) setLogSkipped.checked = settings.logSkipped;
+  if (setTickingSound) setTickingSound.checked = settings.tickingSound;
   if (setTaskCompleteSound) setTaskCompleteSound.checked = settings.taskCompleteSound;
-  autoStartCheck.checked = settings.autoStart;
+  if (autoStartCheck) autoStartCheck.checked = settings.autoStart;
   document.documentElement.style.setProperty('--accent', settings.accentColor);
   document.documentElement.style.setProperty('--accent-glow', `${settings.accentColor}66`);
-  workValue.textContent = settings.workDuration;
-  shortValue.textContent = settings.shortBreak;
-  longValue.textContent = settings.longBreak;
-  intervalValue.textContent = settings.longBreakInterval;
+  if (workValue) workValue.textContent = settings.workDuration;
+  if (shortValue) shortValue.textContent = settings.shortBreak;
+  if (longValue) longValue.textContent = settings.longBreak;
+  if (intervalValue) intervalValue.textContent = settings.longBreakInterval;
   if (!isRunning) {
     timeLeft = settings.workDuration * 60;
     totalSessionTime = timeLeft;
@@ -205,6 +214,7 @@ function applySettingsToUI() {
     drawTimer(1);
   }
 }
+
 function updateStreak() {
   const today = new Date().toDateString();
   if (lastActiveDate !== today) {
@@ -216,10 +226,10 @@ function updateStreak() {
     todayPomodoros = 0;
     halfPomodoros = 0;
   }
-  streakDaysSpan.textContent = streakDays;
+  if (streakDaysSpan) streakDaysSpan.textContent = streakDays;
 }
 
-// ======================== AUDIO CONTEXT ========================
+// ======================== AUDIO ========================
 function initAudioContext() {
   if (!sharedAudioCtx) {
     sharedAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -229,15 +239,17 @@ function initAudioContext() {
   }
 }
 
-// ======================== TIMER CORE (setInterval for reliability) ========================
+// ======================== TIMER ========================
 function updateTimerDisplay() {
   const mins = Math.floor(timeLeft / 60);
   const secs = timeLeft % 60;
-  minutesSpan.textContent = String(mins).padStart(2, '0');
-  secondsSpan.textContent = String(secs).padStart(2, '0');
+  if (minutesSpan) minutesSpan.textContent = String(mins).padStart(2, '0');
+  if (secondsSpan) secondsSpan.textContent = String(secs).padStart(2, '0');
   document.title = `${mins}:${String(secs).padStart(2,'0')} - ${currentSessionType}`;
 }
+
 function drawTimer(progress = null) {
+  if (!ctx) return;
   const w = timerCanvas.width, h = timerCanvas.height, radius = 120, centerX = w/2, centerY = h/2;
   ctx.clearRect(0, 0, w, h);
   ctx.beginPath();
@@ -260,13 +272,11 @@ function timerTick() {
   timeLeft = Math.max(0, timeLeft - 1);
   updateTimerDisplay();
   drawTimer(timeLeft / totalSessionTime);
-  
+
   if (timeLeft <= 10 && timeLeft > 0) {
-    startTicking();
-  } else {
-    stopTicking();
+    if (settings.tickingSound) playTickSound();
   }
-  
+
   if (timeLeft <= 0) {
     stopTimer();
     completeSession(false);
@@ -276,14 +286,14 @@ function timerTick() {
 function startTimer() {
   if (isRunning) return;
   isRunning = true;
-  startPauseBtn.textContent = 'Pause';
-  logPartialContainer.style.display = 'none';
+  if (startPauseBtn) startPauseBtn.textContent = 'Pause';
+  if (logPartialContainer) logPartialContainer.style.display = 'none';
   if (!currentSessionStart) currentSessionStart = Date.now();
-  
+
   if (timerInterval) clearInterval(timerInterval);
-  timerInterval = setInterval(timerTick, 1000);
-  
-  // Animation frame for smooth canvas
+  // Use window.setInterval explicitly to avoid shadowing
+  timerInterval = window.setInterval(timerTick, 1000);
+
   function animate() {
     drawTimer(timeLeft / totalSessionTime);
     if (isRunning) {
@@ -291,8 +301,10 @@ function startTimer() {
     }
   }
   animate();
-  
-  if (settings.desktopNotify && Notification.permission === 'default') Notification.requestPermission();
+
+  if (settings.desktopNotify && Notification.permission === 'default') {
+    Notification.requestPermission();
+  }
 }
 
 function pauseTimer() {
@@ -300,9 +312,8 @@ function pauseTimer() {
   if (timerInterval) clearInterval(timerInterval);
   timerInterval = null;
   if (animationFrame) cancelAnimationFrame(animationFrame);
-  stopTicking();
-  startPauseBtn.textContent = 'Resume';
-  logPartialContainer.style.display = 'block';
+  if (startPauseBtn) startPauseBtn.textContent = 'Resume';
+  if (logPartialContainer) logPartialContainer.style.display = 'block';
   pendingInterruption = true;
 }
 
@@ -311,7 +322,6 @@ function stopTimer() {
   if (timerInterval) clearInterval(timerInterval);
   timerInterval = null;
   if (animationFrame) cancelAnimationFrame(animationFrame);
-  stopTicking();
 }
 
 function resetTimer() {
@@ -320,28 +330,14 @@ function resetTimer() {
   totalSessionTime = timeLeft;
   updateTimerDisplay();
   drawTimer(1);
-  logPartialContainer.style.display = 'none';
+  if (logPartialContainer) logPartialContainer.style.display = 'none';
   pendingInterruption = false;
-  startPauseBtn.textContent = 'Start';
+  if (startPauseBtn) startPauseBtn.textContent = 'Start';
   currentSessionStart = null;
   partialMode = null;
   partialElapsedLogged = false;
 }
 
-// Ticking sound
-function startTicking() {
-  if (!settings.tickingSound) return;
-  if (tickingInterval) return;
-  tickingInterval = setInterval(() => {
-    if (isRunning && timeLeft <= 10 && timeLeft > 0) {
-      playTickSound();
-    }
-  }, 1000);
-}
-function stopTicking() {
-  if (tickingInterval) clearInterval(tickingInterval);
-  tickingInterval = null;
-}
 function playTickSound() {
   try {
     initAudioContext();
@@ -355,10 +351,10 @@ function playTickSound() {
   } catch(e) {}
 }
 
-// ======================== PARTIAL SESSION HANDLING ========================
+// ======================== SESSION HANDLING ========================
 function handleResume() {
   if (pendingInterruption) {
-    interruptModal.style.display = 'flex';
+    if (interruptModal) interruptModal.style.display = 'flex';
     pendingInterruption = false;
   } else {
     startTimer();
@@ -366,6 +362,7 @@ function handleResume() {
 }
 
 function showPartialOptions() {
+  if (!partialOptionsModal || !partialTimeLeftSpan) return;
   const mins = Math.floor(timeLeft / 60);
   const secs = timeLeft % 60;
   partialTimeLeftSpan.textContent = `${mins}:${String(secs).padStart(2,'0')}`;
@@ -386,9 +383,7 @@ function logElapsedPortion() {
     halfPomodoro: true
   };
   sessionsHistory.push(session);
-  if (currentSessionType === 'work') {
-    halfPomodoros++;
-  }
+  if (currentSessionType === 'work') halfPomodoros++;
   saveToStorage();
   renderTasks();
   renderHistoryList();
@@ -400,10 +395,10 @@ function logPartialSessionAndReset() {
   timeLeft = totalSessionTime;
   updateTimerDisplay();
   drawTimer(1);
-  logPartialContainer.style.display = 'none';
-  partialOptionsModal.style.display = 'none';
+  if (logPartialContainer) logPartialContainer.style.display = 'none';
+  if (partialOptionsModal) partialOptionsModal.style.display = 'none';
   pendingInterruption = false;
-  startPauseBtn.textContent = 'Start';
+  if (startPauseBtn) startPauseBtn.textContent = 'Start';
   currentSessionStart = null;
   partialMode = null;
   partialElapsedLogged = false;
@@ -413,7 +408,7 @@ function setupPartialCompleteMode() {
   logElapsedPortion();
   partialElapsedLogged = true;
   partialMode = 'complete';
-  partialOptionsModal.style.display = 'none';
+  if (partialOptionsModal) partialOptionsModal.style.display = 'none';
   startTimer();
 }
 
@@ -474,14 +469,20 @@ function completeSession(isSkipped = false) {
     }
   }
 
-  if (settings.fullscreenBreak && currentSessionType === 'work') breakOverlay.style.display = 'flex';
-  if (settings.fullscreenWork && currentSessionType !== 'work') workOverlay.style.display = 'flex';
-  quoteText.textContent = currentSessionType === 'work' ? `“${quotes[Math.floor(Math.random() * quotes.length)]}”` : `“${workQuotes[Math.floor(Math.random() * workQuotes.length)]}”`;
+  if (settings.fullscreenBreak && currentSessionType === 'work' && breakOverlay) breakOverlay.style.display = 'flex';
+  if (settings.fullscreenWork && currentSessionType !== 'work' && workOverlay) workOverlay.style.display = 'flex';
+  if (quoteText) {
+    quoteText.textContent = currentSessionType === 'work' ? `“${quotes[Math.floor(Math.random() * quotes.length)]}”` : `“${workQuotes[Math.floor(Math.random() * workQuotes.length)]}”`;
+  }
 
   if (currentSessionType === 'work') {
     sessionCount++;
-    if (sessionCount > settings.longBreakInterval) { currentSessionType = 'longBreak'; sessionCount = 1; }
-    else currentSessionType = 'shortBreak';
+    if (sessionCount > settings.longBreakInterval) {
+      currentSessionType = 'longBreak';
+      sessionCount = 1;
+    } else {
+      currentSessionType = 'shortBreak';
+    }
   } else {
     currentSessionType = 'work';
   }
@@ -497,21 +498,27 @@ function completeSession(isSkipped = false) {
   saveToStorage();
   updateChart(currentChartTab);
   renderHistoryList();
-  logPartialContainer.style.display = 'none';
+  if (logPartialContainer) logPartialContainer.style.display = 'none';
   pendingInterruption = false;
   partialMode = null;
   partialElapsedLogged = false;
-  startPauseBtn.textContent = 'Start';
+  if (startPauseBtn) startPauseBtn.textContent = 'Start';
   if (settings.autoStart && !isSkipped) startTimer();
 }
 
 function skipSession() {
   completeSession(true);
 }
+
 function updateSessionLabel() {
-  sessionTypeLabel.textContent = currentSessionType === 'work' ? 'FOCUS' : (currentSessionType === 'shortBreak' ? 'SHORT BREAK' : 'LONG BREAK');
-  sessionCounterSpan.textContent = `${sessionCount} / ${settings.longBreakInterval}`;
+  if (sessionTypeLabel) {
+    sessionTypeLabel.textContent = currentSessionType === 'work' ? 'FOCUS' : (currentSessionType === 'shortBreak' ? 'SHORT BREAK' : 'LONG BREAK');
+  }
+  if (sessionCounterSpan) {
+    sessionCounterSpan.textContent = `${sessionCount} / ${settings.longBreakInterval}`;
+  }
 }
+
 function playSound(type) {
   try {
     initAudioContext();
@@ -525,6 +532,7 @@ function playSound(type) {
     osc.start(); osc.stop(sharedAudioCtx.currentTime + 0.5);
   } catch(e) {}
 }
+
 function playTaskCompleteSound() {
   if (!settings.taskCompleteSound) return;
   try {
@@ -541,12 +549,10 @@ function playTaskCompleteSound() {
 
 // ======================== TASKS ========================
 function renderTasks() {
-  // Deselect if active task is completed
+  if (!tasksListDiv || !completedTasksDiv) return;
   if (activeTaskId) {
     const activeTask = tasks.find(t => t.id === activeTaskId);
-    if (activeTask && activeTask.completed) {
-      activeTaskId = null;
-    }
+    if (activeTask && activeTask.completed) activeTaskId = null;
   }
   const activeTasks = tasks.filter(t => !t.completed);
   const completedTasks = tasks.filter(t => t.completed);
@@ -556,8 +562,9 @@ function renderTasks() {
   if (showCompleted) completedTasks.forEach(task => renderTaskItem(task, completedTasksDiv, true));
   const total = tasks.length;
   const completedCount = tasks.filter(t => t.completed).length;
-  tasksCompletedSpan.textContent = `${completedCount}/${total} completed`;
+  if (tasksCompletedSpan) tasksCompletedSpan.textContent = `${completedCount}/${total} completed`;
 }
+
 function renderTaskItem(task, container, isCompleted = false) {
   const taskEl = document.createElement('div');
   taskEl.className = `task-item ${activeTaskId === task.id ? 'active' : ''} ${isCompleted ? 'completed' : ''}`;
@@ -612,33 +619,40 @@ function renderTaskItem(task, container, isCompleted = false) {
   }
   container.appendChild(taskEl);
 }
+
 function openTaskModal(task = null) {
+  if (!taskModal) return;
   if (task) {
-    editTaskId.value = task.id;
-    editTaskTitle.value = task.title;
-    editTaskEstimate.value = task.estimatedPomodoros;
-    editEstimateValue.textContent = task.estimatedPomodoros;
-    editTaskNotes.value = task.notes || '';
+    if (editTaskId) editTaskId.value = task.id;
+    if (editTaskTitle) editTaskTitle.value = task.title;
+    if (editTaskEstimate) editTaskEstimate.value = task.estimatedPomodoros;
+    if (editEstimateValue) editEstimateValue.textContent = task.estimatedPomodoros;
+    if (editTaskNotes) editTaskNotes.value = task.notes || '';
     document.getElementById('task-modal-title').textContent = 'Edit Task';
   } else {
-    editTaskId.value = ''; editTaskTitle.value = ''; editTaskEstimate.value = 1; editEstimateValue.textContent = 1; editTaskNotes.value = '';
+    if (editTaskId) editTaskId.value = '';
+    if (editTaskTitle) editTaskTitle.value = '';
+    if (editTaskEstimate) editTaskEstimate.value = 1;
+    if (editEstimateValue) editEstimateValue.textContent = 1;
+    if (editTaskNotes) editTaskNotes.value = '';
     document.getElementById('task-modal-title').textContent = 'New Task';
   }
   taskModal.style.display = 'flex';
 }
+
 function saveTask() {
-  const id = editTaskId.value;
-  const title = editTaskTitle.value.trim();
+  const id = editTaskId?.value;
+  const title = editTaskTitle?.value.trim();
   if (!title) return alert('Title required');
-  const estimate = parseInt(editTaskEstimate.value);
-  const notes = editTaskNotes.value.trim();
+  const estimate = parseInt(editTaskEstimate?.value) || 1;
+  const notes = editTaskNotes?.value.trim() || '';
   if (id) {
     const task = tasks.find(t => t.id === id);
     if (task) { task.title = title; task.estimatedPomodoros = estimate; task.notes = notes; }
   } else {
     tasks.push({ id: Date.now().toString(), title, estimatedPomodoros: estimate, completedPomodoros: 0, notes, completed: false, createdAt: new Date().toISOString() });
   }
-  saveToStorage(); renderTasks(); taskModal.style.display = 'none';
+  saveToStorage(); renderTasks(); if (taskModal) taskModal.style.display = 'none';
 }
 
 // ======================== STATISTICS ========================
@@ -697,24 +711,22 @@ function getChartData(tab) {
     return { labels: ['Completed', 'Active'], datasets: [{ data: [completed, active], backgroundColor: ['#4caf50', settings.accentColor] }] };
   }
 }
+
 function updateChart(tab) {
+  if (!statsChart && document.getElementById('stats-chart')) {
+    const ctxChart = document.getElementById('stats-chart').getContext('2d');
+    statsChart = new Chart(ctxChart, { type: 'bar', data: { labels: [], datasets: [] } });
+  }
+  if (!statsChart) return;
   currentChartTab = tab;
-  const ctxChart = document.getElementById('stats-chart').getContext('2d');
-  if (statsChart) statsChart.destroy();
   const chartData = getChartData(tab);
-  const showLegend = (tab !== 'tasks');
-  statsChart = new Chart(ctxChart, {
-    type: 'bar',
-    data: { labels: chartData.labels, datasets: chartData.datasets },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: { legend: { display: showLegend } },
-      scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
-    }
-  });
+  statsChart.data = { labels: chartData.labels, datasets: chartData.datasets };
+  statsChart.options.plugins.legend.display = (tab !== 'tasks');
+  statsChart.update();
 }
+
 function renderHistoryList() {
+  if (!historyListDiv) return;
   historyListDiv.innerHTML = sessionsHistory.slice(-30).reverse().map((s, idx) => {
     const displayType = s.taskName ? s.taskName : s.type;
     const halfMark = s.halfPomodoro ? ' ½' : '';
@@ -725,12 +737,14 @@ function renderHistoryList() {
     </div>`;
   }).join('');
 }
+
 function showSessionDetail(session) {
+  if (!sessionDetailBody || !sessionDetailModal) return;
   let html = `<p><strong>Type:</strong> ${session.type}</p>`;
   html += `<p><strong>Duration:</strong> ${session.duration} min ${session.halfPomodoro ? '(½ Pomodoro)' : ''}</p>`;
   html += `<p><strong>Time:</strong> ${new Date(session.timestamp).toLocaleString()}</p>`;
   if (session.taskName) html += `<p><strong>Task:</strong> ${escapeHtml(session.taskName)}</p>`;
-  if (session.interruptions && session.interruptions.length) {
+  if (session.interruptions?.length) {
     html += `<p><strong>Interruptions:</strong></p><ul>`;
     session.interruptions.forEach(i => html += `<li>${escapeHtml(i.reason)} (${new Date(i.time).toLocaleTimeString()})</li>`);
     html += `</ul>`;
@@ -740,14 +754,14 @@ function showSessionDetail(session) {
   sessionDetailBody.innerHTML = html;
   sessionDetailModal.style.display = 'flex';
 }
-function updateQuickStats() {
-  todayPomodorosSpan.textContent = todayPomodoros;
-  if (halfPomodorosSpan) halfPomodorosSpan.textContent = halfPomodoros;
-  streakDaysSpan.textContent = streakDays;
-}
-function escapeHtml(text) { return String(text).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 
-// ======================== EVENT LISTENERS ========================
+function updateQuickStats() {
+  if (todayPomodorosSpan) todayPomodorosSpan.textContent = todayPomodoros;
+  if (halfPomodorosSpan) halfPomodorosSpan.textContent = halfPomodoros;
+  if (streakDaysSpan) streakDaysSpan.textContent = streakDays;
+}
+
+// ======================== INIT ========================
 function init() {
   initTheme();
   loadFromStorage();
@@ -757,69 +771,67 @@ function init() {
   updateChart('daily');
   renderHistoryList();
 
-  startPauseBtn.addEventListener('click', () => {
-    if (isRunning) pauseTimer();
-    else handleResume();
-  });
-  resetBtn.addEventListener('click', resetTimer);
-  skipBtn.addEventListener('click', skipSession);
-  autoStartCheck.addEventListener('change', e => { settings.autoStart = e.target.checked; saveToStorage(); });
+  if (startPauseBtn) startPauseBtn.addEventListener('click', () => isRunning ? pauseTimer() : handleResume());
+  if (resetBtn) resetBtn.addEventListener('click', resetTimer);
+  if (skipBtn) skipBtn.addEventListener('click', skipSession);
+  if (autoStartCheck) autoStartCheck.addEventListener('change', e => { settings.autoStart = e.target.checked; saveToStorage(); });
+  if (document.getElementById('settings-toggle')) document.getElementById('settings-toggle').addEventListener('click', () => { if (settingsModal) settingsModal.style.display = 'flex'; });
 
-  document.getElementById('settings-toggle').addEventListener('click', () => settingsModal.style.display = 'flex');
+  if (setWork) setWork.addEventListener('input', () => { if (workValue) workValue.textContent = setWork.value; });
+  if (setShort) setShort.addEventListener('input', () => { if (shortValue) shortValue.textContent = setShort.value; });
+  if (setLong) setLong.addEventListener('input', () => { if (longValue) longValue.textContent = setLong.value; });
+  if (setIntervalInput) setIntervalInput.addEventListener('input', () => { if (intervalValue) intervalValue.textContent = setIntervalInput.value; });
+  if (editTaskEstimate) editTaskEstimate.addEventListener('input', () => { if (editEstimateValue) editEstimateValue.textContent = editTaskEstimate.value; });
 
-  setWork.addEventListener('input', () => workValue.textContent = setWork.value);
-  setShort.addEventListener('input', () => shortValue.textContent = setShort.value);
-  setLong.addEventListener('input', () => longValue.textContent = setLong.value);
-  setInterval.addEventListener('input', () => intervalValue.textContent = setInterval.value);
-  editTaskEstimate.addEventListener('input', () => editEstimateValue.textContent = editTaskEstimate.value);
-
-  colorBar.addEventListener('click', () => setAccent.click());
-  setAccent.addEventListener('input', e => {
-    colorBar.style.backgroundColor = e.target.value;
+  if (colorBar) colorBar.addEventListener('click', () => setAccent?.click());
+  if (setAccent) setAccent.addEventListener('input', e => {
+    if (colorBar) colorBar.style.backgroundColor = e.target.value;
     document.documentElement.style.setProperty('--accent', e.target.value);
     document.documentElement.style.setProperty('--accent-glow', e.target.value + '66');
   });
 
-  saveSettingsBtn.addEventListener('click', () => {
-    settings.workDuration = parseInt(setWork.value);
-    settings.shortBreak = parseInt(setShort.value);
-    settings.longBreak = parseInt(setLong.value);
-    settings.longBreakInterval = parseInt(setInterval.value);
-    settings.accentColor = setAccent.value;
-    settings.sound = setSound.value;
-    settings.voiceEnabled = setVoice.checked;
-    settings.desktopNotify = setDesktopNotify.checked;
-    settings.fullscreenBreak = setFullscreenBreak.checked;
-    settings.fullscreenWork = setFullscreenWork.checked;
-    settings.logSkipped = setLogSkipped.checked;
-    settings.tickingSound = setTickingSound.checked;
+  if (saveSettingsBtn) saveSettingsBtn.addEventListener('click', () => {
+    settings.workDuration = parseInt(setWork?.value) || 25;
+    settings.shortBreak = parseInt(setShort?.value) || 5;
+    settings.longBreak = parseInt(setLong?.value) || 15;
+    settings.longBreakInterval = parseInt(setIntervalInput?.value) || 4;
+    if (setAccent) settings.accentColor = setAccent.value;
+    if (setSound) settings.sound = setSound.value;
+    if (setVoice) settings.voiceEnabled = setVoice.checked;
+    if (setDesktopNotify) settings.desktopNotify = setDesktopNotify.checked;
+    if (setFullscreenBreak) settings.fullscreenBreak = setFullscreenBreak.checked;
+    if (setFullscreenWork) settings.fullscreenWork = setFullscreenWork.checked;
+    if (setLogSkipped) settings.logSkipped = setLogSkipped.checked;
+    if (setTickingSound) settings.tickingSound = setTickingSound.checked;
     if (setTaskCompleteSound) settings.taskCompleteSound = setTaskCompleteSound.checked;
     applySettingsToUI();
     if (!isRunning) resetTimer();
     saveToStorage();
-    settingsModal.style.display = 'none';
+    if (settingsModal) settingsModal.style.display = 'none';
     updateChart(currentChartTab);
   });
 
   document.querySelectorAll('.close-modal').forEach(btn => btn.addEventListener('click', () => {
-    settingsModal.style.display = 'none'; taskModal.style.display = 'none'; interruptModal.style.display = 'none'; sessionDetailModal.style.display = 'none'; partialOptionsModal.style.display = 'none';
+    if (settingsModal) settingsModal.style.display = 'none';
+    if (taskModal) taskModal.style.display = 'none';
+    if (interruptModal) interruptModal.style.display = 'none';
+    if (sessionDetailModal) sessionDetailModal.style.display = 'none';
+    if (partialOptionsModal) partialOptionsModal.style.display = 'none';
   }));
   window.addEventListener('click', e => { if (e.target.classList.contains('modal')) e.target.style.display = 'none'; });
 
-  addTaskBtn.addEventListener('click', () => openTaskModal(null));
-  saveTaskBtn.addEventListener('click', saveTask);
+  if (addTaskBtn) addTaskBtn.addEventListener('click', () => openTaskModal(null));
+  if (saveTaskBtn) saveTaskBtn.addEventListener('click', saveTask);
 
-  document.getElementById('log-interruption-btn').addEventListener('click', () => {
-    interruptModal.style.display = 'flex';
-  });
-  saveInterruptBtn.addEventListener('click', () => {
-    const reason = interruptReason.value.trim();
+  document.getElementById('log-interruption-btn')?.addEventListener('click', () => { if (interruptModal) interruptModal.style.display = 'flex'; });
+  if (saveInterruptBtn) saveInterruptBtn.addEventListener('click', () => {
+    const reason = interruptReason?.value.trim();
     if (reason) {
       if (!window.pendingInterruptions) window.pendingInterruptions = [];
       window.pendingInterruptions.push({ reason, time: new Date().toISOString() });
     }
-    interruptModal.style.display = 'none';
-    interruptReason.value = '';
+    if (interruptModal) interruptModal.style.display = 'none';
+    if (interruptReason) interruptReason.value = '';
     if (!isRunning && !pendingInterruption) startTimer();
   });
 
@@ -836,28 +848,39 @@ function init() {
     }
   };
 
-  logPartialBtn.addEventListener('click', showPartialOptions);
-  partialResetOption.addEventListener('click', logPartialSessionAndReset);
-  partialCompleteOption.addEventListener('click', setupPartialCompleteMode);
+  if (logPartialBtn) logPartialBtn.addEventListener('click', showPartialOptions);
+  if (partialResetOption) partialResetOption.addEventListener('click', logPartialSessionAndReset);
+  if (partialCompleteOption) partialCompleteOption.addEventListener('click', setupPartialCompleteMode);
 
-  document.getElementById('close-break-overlay').addEventListener('click', () => breakOverlay.style.display = 'none');
-  document.getElementById('close-work-overlay').addEventListener('click', () => workOverlay.style.display = 'none');
+  document.getElementById('close-break-overlay')?.addEventListener('click', () => { if (breakOverlay) breakOverlay.style.display = 'none'; });
+  document.getElementById('close-work-overlay')?.addEventListener('click', () => { if (workOverlay) workOverlay.style.display = 'none'; });
 
   tabBtns.forEach(btn => btn.addEventListener('click', () => {
-    tabBtns.forEach(b => b.classList.remove('active')); btn.classList.add('active');
+    tabBtns.forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
     const tab = btn.dataset.tab;
-    if (tab === 'history') { chartContainer.style.display = 'none'; historyPanel.style.display = 'block'; renderHistoryList(); }
-    else { chartContainer.style.display = 'block'; historyPanel.style.display = 'none'; updateChart(tab); }
+    if (tab === 'history') {
+      if (chartContainer) chartContainer.style.display = 'none';
+      if (historyPanel) historyPanel.style.display = 'block';
+      renderHistoryList();
+    } else {
+      if (chartContainer) chartContainer.style.display = 'block';
+      if (historyPanel) historyPanel.style.display = 'none';
+      updateChart(tab);
+    }
   }));
 
-  exportDataBtn.addEventListener('click', () => {
+  if (exportDataBtn) exportDataBtn.addEventListener('click', () => {
     let csv = "Type,Duration,Timestamp,Task,Partial,Half\n";
     sessionsHistory.forEach(s => csv += `${s.type},${s.duration},${s.timestamp},${s.taskName || ''},${s.partial ? 'Yes' : 'No'},${s.halfPomodoro ? 'Yes' : 'No'}\n`);
-    const blob = new Blob([csv], { type: 'text/csv' }), url = URL.createObjectURL(blob);
-    const a = document.createElement('a'); a.href = url; a.download = 'pomodoro_sessions.csv'; a.click();
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'pomodoro_sessions.csv';
+    a.click();
   });
 
-  historyListDiv.addEventListener('click', (e) => {
+  if (historyListDiv) historyListDiv.addEventListener('click', (e) => {
     const item = e.target.closest('.history-item');
     if (item) {
       const idx = parseInt(item.dataset.sessionIndex);
@@ -865,16 +888,16 @@ function init() {
     }
   });
 
-  focusToggle.addEventListener('click', () => {
+  if (focusToggle) focusToggle.addEventListener('click', () => {
     document.body.classList.add('focus-mode');
-    exitFocusBtn.style.display = 'flex';
+    if (exitFocusBtn) exitFocusBtn.style.display = 'flex';
   });
-  exitFocusBtn.addEventListener('click', () => {
+  if (exitFocusBtn) exitFocusBtn.addEventListener('click', () => {
     document.body.classList.remove('focus-mode');
     exitFocusBtn.style.display = 'none';
   });
 
-  toggleCompletedBtn.addEventListener('click', () => {
+  if (toggleCompletedBtn) toggleCompletedBtn.addEventListener('click', () => {
     showCompleted = !showCompleted;
     toggleCompletedBtn.textContent = showCompleted ? '▼' : '▶';
     renderTasks();
@@ -884,4 +907,6 @@ function init() {
   initAudioContext();
 }
 
-init();
+// Start
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+else init();
