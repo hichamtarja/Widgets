@@ -7,27 +7,17 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <a href="../image_slider/index.html" class="back-btn" title="Back to dashboard">←</a>
+
   <div class="slider" id="slider">
-    <!-- Slides container -->
-    <div class="slides">
-      <img src="images/identify.gif" class="slide active" alt="Identify">
-      <img src="images/respond.gif" class="slide" alt="Respond">
-      <img src="images/protect.gif" class="slide" alt="Protect">
-      <img src="images/recover.gif" class="slide" alt="Recover">
-    </div>
-
-    <!-- Navigation buttons -->
-    <button class="nav-btn prev" aria-label="Previous slide">‹</button>
-    <button class="nav-btn next" aria-label="Next slide">›</button>
-
-    <!-- Slide counter -->
-    <div class="slider-counter">
-      <span id="current-slide">1</span> / <span id="total-slides">4</span>
-    </div>
-
-    <!-- Dot indicators -->
+    <div class="slides" id="slides-container"></div>
+    <button class="nav-btn prev" aria-label="Previous">‹</button>
+    <button class="nav-btn next" aria-label="Next">›</button>
+    <div class="slider-counter"><span id="current-slide">1</span> / <span id="total-slides">0</span></div>
     <div class="dots-container" id="dots-container"></div>
   </div>
+
+  <div id="error-message" class="error-message hidden">Slider not found or no images.</div>
 
   <script src="script.js"></script>
 </body>
