@@ -7,6 +7,8 @@ let sessionCount = 1;
 let timeLeft = 25 * 60;
 let isRunning = false;
 let totalSessionTime = 25 * 60;
+let tickingInterval = null;
+let pendingInterruption = false;   // Flag to prompt interruption on resume
 
 let todayPomodoros = 0;
 let streakDays = 0;
@@ -27,7 +29,9 @@ let settings = {
   desktopNotify: true,
   fullscreenBreak: false,
   fullscreenWork: false,
-  accentColor: '#ff6a00'
+  accentColor: '#ff6a00',
+  logSkipped: true,
+  tickingSound: false
 };
 
 const quotes = [
@@ -49,7 +53,7 @@ const workQuotes = [
 let statsChart = null;
 let currentChartTab = 'daily';
 
-// DOM Elements
+// ---------- DOM Elements ----------
 const timerCanvas = document.getElementById('timer-canvas');
 const ctx = timerCanvas.getContext('2d');
 const minutesSpan = document.getElementById('timer-minutes');
@@ -75,6 +79,8 @@ const taskModal = document.getElementById('task-modal');
 const interruptModal = document.getElementById('interrupt-modal');
 const breakOverlay = document.getElementById('break-overlay');
 const workOverlay = document.getElementById('work-overlay');
+const sessionDetailModal = document.getElementById('session-detail-modal');
+const sessionDetailBody = document.getElementById('session-detail-body');
 
 // Settings inputs
 const setWork = document.getElementById('set-work');
@@ -88,6 +94,8 @@ const setVoice = document.getElementById('set-voice');
 const setDesktopNotify = document.getElementById('set-desktop-notify');
 const setFullscreenBreak = document.getElementById('set-fullscreen-break');
 const setFullscreenWork = document.getElementById('set-fullscreen-work');
+const setLogSkipped = document.getElementById('set-log-skipped');
+const setTickingSound = document.getElementById('set-ticking-sound');
 const saveSettingsBtn = document.getElementById('save-settings-btn');
 
 // Value displays
@@ -103,7 +111,6 @@ const editTaskTitle = document.getElementById('edit-task-title');
 const editTaskEstimate = document.getElementById('edit-task-estimate');
 const editTaskNotes = document.getElementById('edit-task-notes');
 const saveTaskBtn = document.getElementById('save-task-btn');
-const deleteTaskBtn = document.getElementById('delete-task-btn');
 
 const interruptReason = document.getElementById('interrupt-reason');
 const saveInterruptBtn = document.getElementById('save-interrupt-btn');
@@ -115,6 +122,22 @@ const historyListDiv = document.getElementById('history-list');
 const exportDataBtn = document.getElementById('export-data-btn');
 const focusToggle = document.getElementById('focus-mode-toggle');
 const exitFocusBtn = document.getElementById('exit-focus-mode');
+const themeToggle = document.getElementById('theme-toggle');
+
+const logPartialContainer = document.getElementById('log-partial-container');
+const logPartialBtn = document.getElementById('log-partial-btn');
+
+// ======================== THEME ========================
+function initTheme() {
+  const savedTheme = localStorage.getItem('pomodoro_theme') || 'dark';
+  document.body.classList.toggle('light-mode', savedTheme === 'light');
+  themeToggle.textContent = savedTheme === 'light' ? '☀️' : '🌙';
+}
+themeToggle.addEventListener('click', () => {
+  const isLight = document.body.classList.toggle('light-mode');
+  localStorage.setItem('pomodoro_theme', isLight ? 'light' : 'dark');
+  themeToggle.textContent = isLight ? '☀️' : '🌙';
+});
 
 // ======================== INITIALIZATION & STORAGE ========================
 function loadFromStorage() {
@@ -155,6 +178,8 @@ function applySettingsToUI() {
   setDesktopNotify.checked = settings.desktopNotify;
   setFullscreenBreak.checked = settings.fullscreenBreak;
   setFullscreenWork.checked = settings.fullscreenWork;
+  setLogSkipped.checked = settings.logSkipped;
+  setTickingSound.checked = settings.tickingSound;
   autoStartCheck.checked = settings.autoStart;
   document.documentElement.style.setProperty('--accent', settings.accentColor);
   document.documentElement.style.setProperty('--accent-glow', `${settings.accentColor}66`);
@@ -200,7 +225,7 @@ function drawTimer(progress = null) {
   ctx.clearRect(0, 0, w, h);
   ctx.beginPath();
   ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
-  ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+  ctx.strokeStyle = 'rgba(128,128,128,0.2)';
   ctx.lineWidth = 12;
   ctx.stroke();
   if (progress === null) progress = timeLeft / totalSessionTime;
@@ -213,6 +238,32 @@ function drawTimer(progress = null) {
   ctx.stroke();
 }
 
+function startTicking() {
+  if (!settings.tickingSound) return;
+  if (tickingInterval) clearInterval(tickingInterval);
+  tickingInterval = setInterval(() => {
+    if (isRunning && timeLeft <= 10 && timeLeft > 0) {
+      playTickSound();
+    }
+  }, 1000);
+}
+function stopTicking() {
+  if (tickingInterval) clearInterval(tickingInterval);
+  tickingInterval = null;
+}
+function playTickSound() {
+  try {
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    osc.frequency.value = 800;
+    gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+    osc.start(); osc.stop(audioCtx.currentTime + 0.1);
+  } catch(e) {}
+}
+
 function timerLoop(timestamp) {
   if (!isRunning) return;
   if (!lastTimestamp) lastTimestamp = timestamp;
@@ -223,8 +274,10 @@ function timerLoop(timestamp) {
     lastTimestamp = timestamp - (delta % 1000);
     updateTimerDisplay();
     drawTimer(timeLeft / totalSessionTime);
+    if (timeLeft <= 10) startTicking();
     if (timeLeft <= 0) {
-      completeSession();
+      stopTicking();
+      completeSession(false);
       return;
     }
   }
@@ -235,6 +288,7 @@ function startTimer() {
   if (isRunning) return;
   isRunning = true;
   startPauseBtn.textContent = 'Pause';
+  logPartialContainer.style.display = 'none';
   lastTimestamp = null;
   animationFrame = requestAnimationFrame(timerLoop);
   if (settings.desktopNotify && Notification.permission === 'default') Notification.requestPermission();
@@ -242,11 +296,11 @@ function startTimer() {
 
 function pauseTimer() {
   isRunning = false;
-  if (animationFrame) {
-    cancelAnimationFrame(animationFrame);
-    animationFrame = null;
-  }
-  startPauseBtn.textContent = 'Start';
+  if (animationFrame) cancelAnimationFrame(animationFrame);
+  stopTicking();
+  startPauseBtn.textContent = 'Resume';
+  logPartialContainer.style.display = 'block';
+  pendingInterruption = true; // Prompt interruption on next resume
 }
 
 function resetTimer() {
@@ -255,15 +309,51 @@ function resetTimer() {
   totalSessionTime = timeLeft;
   updateTimerDisplay();
   drawTimer(1);
+  logPartialContainer.style.display = 'none';
+  pendingInterruption = false;
 }
 
-function skipSession() {
-  pauseTimer();
-  completeSession();
+function handleResume() {
+  if (pendingInterruption) {
+    interruptModal.style.display = 'flex';
+    pendingInterruption = false;
+  } else {
+    startTimer();
+  }
 }
 
-function completeSession() {
+function logPartialSession() {
+  if (timeLeft === totalSessionTime) return;
+  const elapsedSeconds = totalSessionTime - timeLeft;
+  const activeTask = activeTaskId ? tasks.find(t => t.id === activeTaskId) : null;
+  const session = {
+    type: currentSessionType,
+    duration: Math.floor(elapsedSeconds / 60),
+    timestamp: new Date().toISOString(),
+    taskName: (currentSessionType === 'work' && activeTask) ? activeTask.title : null,
+    interruptions: [],
+    partial: true
+  };
+  sessionsHistory.push(session);
+  if (currentSessionType === 'work' && activeTask && !activeTask.completed) {
+    activeTask.completedPomodoros = Math.min(activeTask.completedPomodoros + 1, activeTask.estimatedPomodoros);
+    if (activeTask.completedPomodoros >= activeTask.estimatedPomodoros) activeTask.completed = true;
+    todayPomodoros++;
+    updateStreak();
+  }
+  saveToStorage();
+  renderTasks();
+  renderHistoryList();
+  timeLeft = totalSessionTime;
+  updateTimerDisplay();
+  drawTimer(1);
+  logPartialContainer.style.display = 'none';
+  pendingInterruption = false;
+}
+
+function completeSession(isSkipped = false) {
   pauseTimer();
+  stopTicking();
   playSound(settings.sound);
   if (settings.desktopNotify && Notification.permission === 'granted') {
     new Notification(`Pomodoro Suite`, { body: `${currentSessionType} session completed!` });
@@ -272,19 +362,21 @@ function completeSession() {
     const msg = new SpeechSynthesisUtterance(currentSessionType === 'work' ? 'Time for a break.' : 'Back to work.');
     window.speechSynthesis.speak(msg);
   }
-  
-  // Store session with task name if applicable
+
   const activeTask = activeTaskId ? tasks.find(t => t.id === activeTaskId) : null;
-  const session = {
-    type: currentSessionType,
-    duration: totalSessionTime / 60,
-    timestamp: new Date().toISOString(),
-    taskName: (currentSessionType === 'work' && activeTask) ? activeTask.title : null,
-    interruptions: []
-  };
-  sessionsHistory.push(session);
-  
-  if (currentSessionType === 'work') {
+  const shouldLog = !isSkipped || settings.logSkipped;
+  if (shouldLog) {
+    const session = {
+      type: currentSessionType,
+      duration: totalSessionTime / 60,
+      timestamp: new Date().toISOString(),
+      taskName: (currentSessionType === 'work' && activeTask) ? activeTask.title : null,
+      interruptions: []
+    };
+    sessionsHistory.push(session);
+  }
+
+  if (currentSessionType === 'work' && !isSkipped) {
     todayPomodoros++;
     updateStreak();
     if (activeTask && !activeTask.completed) {
@@ -292,11 +384,11 @@ function completeSession() {
       if (activeTask.completedPomodoros >= activeTask.estimatedPomodoros) activeTask.completed = true;
     }
   }
-  
+
   if (settings.fullscreenBreak && currentSessionType === 'work') breakOverlay.style.display = 'flex';
   if (settings.fullscreenWork && currentSessionType !== 'work') workOverlay.style.display = 'flex';
   quoteText.textContent = currentSessionType === 'work' ? `“${quotes[Math.floor(Math.random() * quotes.length)]}”` : `“${workQuotes[Math.floor(Math.random() * workQuotes.length)]}”`;
-  
+
   if (currentSessionType === 'work') {
     sessionCount++;
     if (sessionCount > settings.longBreakInterval) { currentSessionType = 'longBreak'; sessionCount = 1; }
@@ -304,7 +396,7 @@ function completeSession() {
   } else {
     currentSessionType = 'work';
   }
-  
+
   timeLeft = (currentSessionType === 'work' ? settings.workDuration : currentSessionType === 'shortBreak' ? settings.shortBreak : settings.longBreak) * 60;
   totalSessionTime = timeLeft;
   updateSessionLabel();
@@ -315,7 +407,13 @@ function completeSession() {
   saveToStorage();
   updateChart(currentChartTab);
   renderHistoryList();
-  if (settings.autoStart) startTimer();
+  logPartialContainer.style.display = 'none';
+  pendingInterruption = false;
+  if (settings.autoStart && !isSkipped) startTimer();
+}
+
+function skipSession() {
+  completeSession(true);
 }
 
 function updateSessionLabel() {
@@ -337,7 +435,7 @@ function playSound(type) {
   } catch(e) {}
 }
 
-// ======================== TASKS ========================
+// ======================== TASKS (with X delete) ========================
 function renderTasks() {
   const activeTasks = tasks.filter(t => !t.completed);
   const completedTasks = tasks.filter(t => t.completed);
@@ -366,13 +464,29 @@ function renderTaskItem(task, container, isCompleted = false) {
         ${task.notes ? `<small>📝 ${escapeHtml(task.notes.substring(0,30))}...</small>` : ''}
       </div>
     </div>
+    <button class="task-delete-btn" title="Delete task">✕</button>
   `;
+  const deleteBtn = taskEl.querySelector('.task-delete-btn');
+  deleteBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (confirm(`Delete "${task.title}"?`)) {
+      tasks = tasks.filter(t => t.id !== task.id);
+      if (activeTaskId === task.id) activeTaskId = null;
+      saveToStorage();
+      renderTasks();
+    }
+  });
+  const checkbox = taskEl.querySelector('.task-checkbox');
+  checkbox.addEventListener('change', (e) => {
+    task.completed = e.target.checked;
+    saveToStorage();
+    renderTasks();
+  });
   taskEl.addEventListener('click', (e) => {
-    if (e.target.type === 'checkbox') {
-      task.completed = e.target.checked;
-      saveToStorage(); renderTasks();
-    } else {
-      activeTaskId = task.id; renderTasks(); saveToStorage();
+    if (e.target.type !== 'checkbox' && !e.target.classList.contains('task-delete-btn')) {
+      activeTaskId = task.id;
+      renderTasks();
+      saveToStorage();
     }
   });
   taskEl.addEventListener('dblclick', () => openTaskModal(task));
@@ -391,7 +505,6 @@ function openTaskModal(task = null) {
     editTaskId.value = ''; editTaskTitle.value = ''; editTaskEstimate.value = 1; editEstimateValue.textContent = 1; editTaskNotes.value = '';
     document.getElementById('task-modal-title').textContent = 'New Task';
   }
-  deleteTaskBtn.style.display = 'block';
   taskModal.style.display = 'flex';
 }
 
@@ -410,18 +523,9 @@ function saveTask() {
   saveToStorage(); renderTasks(); taskModal.style.display = 'none';
 }
 
-function deleteTask() {
-  const id = editTaskId.value;
-  if (id && confirm('Delete this task?')) {
-    tasks = tasks.filter(t => t.id !== id);
-    if (activeTaskId === id) activeTaskId = null;
-    saveToStorage(); renderTasks(); taskModal.style.display = 'none';
-  }
-}
-
-// ======================== STATISTICS ========================
+// ======================== STATISTICS & CHARTS ========================
 function getChartData(tab) {
-  const workSessions = sessionsHistory.filter(s => s.type === 'work');
+  const workSessions = sessionsHistory.filter(s => s.type === 'work' && !s.partial);
   const now = new Date();
   if (tab === 'daily') {
     const days = [], counts = [];
@@ -441,7 +545,7 @@ function getChartData(tab) {
       counts.push(workSessions.filter(s => { const d = new Date(s.timestamp); return d >= start && d <= end; }).length);
     }
     return { labels: weeks, data: counts };
-  } else {
+  } else if (tab === 'monthly') {
     const months = [], counts = [];
     for (let i = 5; i >= 0; i--) {
       const d = new Date(now); d.setMonth(now.getMonth() - i);
@@ -450,6 +554,10 @@ function getChartData(tab) {
       counts.push(workSessions.filter(s => s.timestamp.startsWith(monthStr)).length);
     }
     return { labels: months, data: counts };
+  } else if (tab === 'tasks') {
+    const completed = tasks.filter(t => t.completed).length;
+    const active = tasks.filter(t => !t.completed).length;
+    return { labels: ['Completed', 'Active'], data: [completed, active] };
   }
 }
 
@@ -459,16 +567,36 @@ function updateChart(tab) {
   if (statsChart) statsChart.destroy();
   const { labels, data } = getChartData(tab);
   statsChart = new Chart(ctxChart, {
-    type: 'bar', data: { labels, datasets: [{ label: 'Pomodoros', data, backgroundColor: settings.accentColor, borderRadius: 8 }] },
+    type: 'bar', data: { labels, datasets: [{ label: tab === 'tasks' ? 'Tasks' : 'Pomodoros', data, backgroundColor: settings.accentColor, borderRadius: 8 }] },
     options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
   });
 }
 
 function renderHistoryList() {
-  historyListDiv.innerHTML = sessionsHistory.slice(-20).reverse().map(s => {
+  historyListDiv.innerHTML = sessionsHistory.slice(-30).reverse().map((s, idx) => {
     const displayType = s.taskName ? s.taskName : s.type;
-    return `<div class="history-item"><span>${displayType} · ${s.duration} min</span><span>${new Date(s.timestamp).toLocaleString()}</span></div>`;
+    const partialMark = s.partial ? ' ⏸️' : '';
+    return `<div class="history-item" data-session-index="${sessionsHistory.length - 1 - idx}">
+      <span>${displayType} · ${s.duration} min${partialMark}</span>
+      <span>${new Date(s.timestamp).toLocaleString()}</span>
+    </div>`;
   }).join('');
+}
+
+function showSessionDetail(session) {
+  let html = `<p><strong>Type:</strong> ${session.type}</p>`;
+  html += `<p><strong>Duration:</strong> ${session.duration} min</p>`;
+  html += `<p><strong>Time:</strong> ${new Date(session.timestamp).toLocaleString()}</p>`;
+  if (session.taskName) html += `<p><strong>Task:</strong> ${escapeHtml(session.taskName)}</p>`;
+  if (session.interruptions && session.interruptions.length) {
+    html += `<p><strong>Interruptions:</strong></p><ul>`;
+    session.interruptions.forEach(i => html += `<li>${escapeHtml(i.reason)} (${new Date(i.time).toLocaleTimeString()})</li>`);
+    html += `</ul>`;
+  } else {
+    html += `<p>No interruptions recorded.</p>`;
+  }
+  sessionDetailBody.innerHTML = html;
+  sessionDetailModal.style.display = 'flex';
 }
 
 function updateQuickStats() {
@@ -478,35 +606,39 @@ function updateQuickStats() {
 
 function escapeHtml(text) { return String(text).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 
-// ======================== EVENT LISTENERS ========================
+// ======================== EVENT LISTENERS & INIT ========================
 function init() {
+  initTheme();
   loadFromStorage();
   updateSessionLabel();
   updateTimerDisplay();
   drawTimer(1);
   updateChart('daily');
   renderHistoryList();
-  
-  startPauseBtn.addEventListener('click', () => isRunning ? pauseTimer() : startTimer());
+
+  startPauseBtn.addEventListener('click', () => {
+    if (isRunning) pauseTimer();
+    else handleResume();
+  });
   resetBtn.addEventListener('click', resetTimer);
   skipBtn.addEventListener('click', skipSession);
   autoStartCheck.addEventListener('change', e => { settings.autoStart = e.target.checked; saveToStorage(); });
-  
+
   document.getElementById('settings-toggle').addEventListener('click', () => settingsModal.style.display = 'flex');
-  
+
   setWork.addEventListener('input', () => workValue.textContent = setWork.value);
   setShort.addEventListener('input', () => shortValue.textContent = setShort.value);
   setLong.addEventListener('input', () => longValue.textContent = setLong.value);
   setInterval.addEventListener('input', () => intervalValue.textContent = setInterval.value);
   editTaskEstimate.addEventListener('input', () => editEstimateValue.textContent = editTaskEstimate.value);
-  
+
   colorBar.addEventListener('click', () => setAccent.click());
   setAccent.addEventListener('input', e => {
     colorBar.style.backgroundColor = e.target.value;
     document.documentElement.style.setProperty('--accent', e.target.value);
     document.documentElement.style.setProperty('--accent-glow', e.target.value + '66');
   });
-  
+
   saveSettingsBtn.addEventListener('click', () => {
     settings.workDuration = parseInt(setWork.value);
     settings.shortBreak = parseInt(setShort.value);
@@ -518,23 +650,30 @@ function init() {
     settings.desktopNotify = setDesktopNotify.checked;
     settings.fullscreenBreak = setFullscreenBreak.checked;
     settings.fullscreenWork = setFullscreenWork.checked;
+    settings.logSkipped = setLogSkipped.checked;
+    settings.tickingSound = setTickingSound.checked;
     applySettingsToUI();
     if (!isRunning) resetTimer();
     saveToStorage();
     settingsModal.style.display = 'none';
     updateChart(currentChartTab);
   });
-  
+
   document.querySelectorAll('.close-modal').forEach(btn => btn.addEventListener('click', () => {
-    settingsModal.style.display = 'none'; taskModal.style.display = 'none'; interruptModal.style.display = 'none';
+    settingsModal.style.display = 'none'; taskModal.style.display = 'none'; interruptModal.style.display = 'none'; sessionDetailModal.style.display = 'none';
   }));
   window.addEventListener('click', e => { if (e.target.classList.contains('modal')) e.target.style.display = 'none'; });
-  
+
   addTaskBtn.addEventListener('click', () => openTaskModal(null));
   saveTaskBtn.addEventListener('click', saveTask);
-  deleteTaskBtn.addEventListener('click', deleteTask);
-  
-  document.getElementById('log-interruption-btn').addEventListener('click', () => interruptModal.style.display = 'flex');
+
+  document.getElementById('log-interruption-btn').addEventListener('click', () => {
+    if (sessionsHistory.length) {
+      interruptModal.style.display = 'flex';
+    } else {
+      alert('No active session to log interruption for.');
+    }
+  });
   saveInterruptBtn.addEventListener('click', () => {
     const reason = interruptReason.value.trim();
     if (reason && sessionsHistory.length) {
@@ -542,28 +681,40 @@ function init() {
       if (!last.interruptions) last.interruptions = [];
       last.interruptions.push({ reason, time: new Date().toISOString() });
       saveToStorage();
+      renderHistoryList();
     }
     interruptModal.style.display = 'none';
     interruptReason.value = '';
+    if (!isRunning && pendingInterruption === false) startTimer(); // resume after logging interruption
   });
-  
+
+  logPartialBtn.addEventListener('click', logPartialSession);
+
   document.getElementById('close-break-overlay').addEventListener('click', () => breakOverlay.style.display = 'none');
   document.getElementById('close-work-overlay').addEventListener('click', () => workOverlay.style.display = 'none');
-  
+
   tabBtns.forEach(btn => btn.addEventListener('click', () => {
     tabBtns.forEach(b => b.classList.remove('active')); btn.classList.add('active');
     const tab = btn.dataset.tab;
     if (tab === 'history') { chartContainer.style.display = 'none'; historyPanel.style.display = 'block'; renderHistoryList(); }
     else { chartContainer.style.display = 'block'; historyPanel.style.display = 'none'; updateChart(tab); }
   }));
-  
+
   exportDataBtn.addEventListener('click', () => {
-    let csv = "Type,Duration,Timestamp,Task\n";
-    sessionsHistory.forEach(s => csv += `${s.type},${s.duration},${s.timestamp},${s.taskName || ''}\n`);
+    let csv = "Type,Duration,Timestamp,Task,Partial\n";
+    sessionsHistory.forEach(s => csv += `${s.type},${s.duration},${s.timestamp},${s.taskName || ''},${s.partial ? 'Yes' : 'No'}\n`);
     const blob = new Blob([csv], { type: 'text/csv' }), url = URL.createObjectURL(blob);
     const a = document.createElement('a'); a.href = url; a.download = 'pomodoro_sessions.csv'; a.click();
   });
-  
+
+  historyListDiv.addEventListener('click', (e) => {
+    const item = e.target.closest('.history-item');
+    if (item) {
+      const idx = parseInt(item.dataset.sessionIndex);
+      if (!isNaN(idx) && sessionsHistory[idx]) showSessionDetail(sessionsHistory[idx]);
+    }
+  });
+
   focusToggle.addEventListener('click', () => {
     document.body.classList.add('focus-mode');
     exitFocusBtn.style.display = 'flex';
@@ -572,13 +723,13 @@ function init() {
     document.body.classList.remove('focus-mode');
     exitFocusBtn.style.display = 'none';
   });
-  
+
   toggleCompletedBtn.addEventListener('click', () => {
     showCompleted = !showCompleted;
     toggleCompletedBtn.textContent = showCompleted ? '▼' : '▶';
     renderTasks();
   });
-  
+
   if (Notification.permission === 'default') Notification.requestPermission();
 }
 
