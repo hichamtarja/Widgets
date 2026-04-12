@@ -12,8 +12,8 @@ html, body {
 /* Slider container */
 .slider {
   position: relative;
-  width: 800px;
-  height: 500px;
+  width: 500px;
+  height: 300px;
   overflow: hidden;
   border-radius: 12px;
 }
@@ -44,6 +44,7 @@ html, body {
 /* Buttons */
 button {
   position: absolute;
+  opacity: 20%;
   top: 50%;
   transform: translateY(-50%);
   background: rgba(40, 40, 40, 0.6);
