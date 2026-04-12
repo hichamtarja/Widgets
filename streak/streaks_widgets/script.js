@@ -1,10 +1,5 @@
 /**
- * Streak Widget – Ultimate Customizable
- * - Flip card for last streak info
- * - Full styling options (background gradient/solid, fonts, colors)
- * - Three-dot menu with settings & reset
- * - Plus confetti, minus shake effect
- * - Editable emoji and title
+ * Streak Widget – Refined with draggable settings, flip on counter, etc.
  */
 
 // =============================================
@@ -23,13 +18,14 @@ const widgetContainer = document.getElementById('widgetContainer');
 const widgetTitleEl = document.getElementById('widget-title');
 const widgetEmoji = document.getElementById('widgetEmoji');
 const counterEl = document.getElementById('counter');
+const streakLabel = document.getElementById('streak-label');
 const statusEl = document.getElementById('status');
 const progressBar = document.getElementById('progress-bar');
 const progressText = document.getElementById('progress-text');
 const increaseBtn = document.getElementById('increase-btn');
 const decreaseBtn = document.getElementById('decrease-btn');
 const flipContainer = document.getElementById('flipContainer');
-const flipToBack = document.getElementById('flip-to-back');
+const counterWrapper = document.getElementById('counterWrapper');
 const flipToFront = document.getElementById('flip-to-front');
 const menuToggle = document.getElementById('menu-toggle');
 const menuDropdown = document.getElementById('menu-dropdown');
@@ -58,7 +54,7 @@ const lastStreakDate = document.getElementById('last-streak-date');
 const lastStreakTime = document.getElementById('last-streak-time');
 
 // =============================================
-// STORAGE HELPERS
+// STORAGE HELPERS (unchanged)
 // =============================================
 function getWidgetList() {
   try { return JSON.parse(localStorage.getItem(WIDGET_LIST_KEY)) || []; }
@@ -76,7 +72,8 @@ function getLastStreak(id) {
   return saved ? JSON.parse(saved) : null;
 }
 function setLastStreak(id, date) {
-  localStorage.setItem(getLastStreakKey(id), JSON.stringify(date));
+  if (date === null) localStorage.removeItem(getLastStreakKey(id));
+  else localStorage.setItem(getLastStreakKey(id), JSON.stringify(date));
 }
 
 function getCustomizationKey(id) { return `${CUSTOM_KEY_PREFIX}${id}`; }
@@ -89,7 +86,7 @@ function saveCustomization(id, settings) {
 }
 
 // =============================================
-// MILESTONE MESSAGES (same as before)
+// MILESTONE MESSAGES
 // =============================================
 function getMilestoneMessage(count) {
   if (count === 0) return { text: 'Start your streak 🚀', color: '#888' };
@@ -119,6 +116,7 @@ function getMilestoneMessage(count) {
 // =============================================
 function updateUI() {
   counterEl.textContent = currentCount;
+  streakLabel.textContent = `${currentCount} day streak`;
   const progressPercent = Math.min((currentCount / 365) * 100, 100);
   progressBar.style.width = `${progressPercent}%`;
   progressText.textContent = `${currentCount}/365`;
@@ -150,19 +148,15 @@ function celebrate365() {
 // APPLY CUSTOMIZATION
 // =============================================
 function applyCustomization(settings) {
-  // Emoji
   if (settings.emoji) widgetEmoji.textContent = settings.emoji;
-  // Font family
   if (settings.fontFamily) {
     document.documentElement.style.setProperty('--font-family', settings.fontFamily);
     fontSelect.value = settings.fontFamily;
   }
-  // Text color
   if (settings.fontColor) {
     document.documentElement.style.setProperty('--text-primary', settings.fontColor);
     fontColorPicker.value = settings.fontColor;
   }
-  // Background
   if (settings.bgType === 'gradient') {
     const start = settings.gradientStart || '#1f1f1f';
     const end = settings.gradientEnd || '#2a2a2a';
@@ -173,17 +167,14 @@ function applyCustomization(settings) {
     widgetContainer.style.background = bg;
     document.querySelector('.back-container').style.background = bg;
   }
-  // Accent
   if (settings.accentColor) {
     document.documentElement.style.setProperty('--accent-color', settings.accentColor);
     accentPicker.value = settings.accentColor;
   }
-  // Counter color
   if (settings.counterColor) {
     document.documentElement.style.setProperty('--counter-color', settings.counterColor);
     counterColorPicker.value = settings.counterColor;
   }
-  // Size
   if (settings.widgetSize) {
     const scale = settings.widgetSize / 100;
     widgetContainer.style.transform = `scale(${scale})`;
@@ -191,7 +182,6 @@ function applyCustomization(settings) {
     sizeSlider.value = settings.widgetSize;
     sizeValue.textContent = settings.widgetSize;
   }
-  // Update picker states
   bgTypeSelect.value = settings.bgType || 'solid';
   toggleBgInputs();
   if (settings.bgColor) bgColorPicker.value = settings.bgColor;
@@ -234,10 +224,8 @@ function saveCurrentCustomization() {
 // Increase
 increaseBtn.addEventListener('click', () => {
   currentCount++;
-  const now = new Date();
-  setLastStreak(widgetId, now.toISOString());
+  setLastStreak(widgetId, new Date().toISOString());
   updateUI();
-  // Confetti cheer
   confetti({ particleCount: 30, spread: 50, origin: { y: 0.7 } });
 });
 
@@ -251,8 +239,8 @@ decreaseBtn.addEventListener('click', () => {
   }
 });
 
-// Flip
-flipToBack.addEventListener('click', () => {
+// Flip on counter click
+counterWrapper.addEventListener('click', () => {
   flipContainer.classList.add('flipped');
   updateLastStreakDisplay();
 });
@@ -285,6 +273,7 @@ menuSettings.addEventListener('click', () => {
 menuReset.addEventListener('click', () => {
   if (confirm('Reset streak to 0?')) {
     currentCount = 0;
+    setLastStreak(widgetId, null); // clear last streak
     updateUI();
   }
   menuDropdown.classList.add('hidden');
@@ -304,7 +293,7 @@ widgetTitleEl.addEventListener('click', () => {
   }
 });
 
-// Emoji editing (click)
+// Emoji editing
 widgetEmoji.addEventListener('click', () => {
   const newEmoji = prompt('Enter an emoji:', widgetEmoji.textContent);
   if (newEmoji) {
@@ -323,7 +312,6 @@ bgTypeSelect.addEventListener('change', toggleBgInputs);
 sizeSlider.addEventListener('input', () => sizeValue.textContent = sizeSlider.value);
 [fontSelect, fontColorPicker, bgColorPicker, gradientStartPicker, gradientEndPicker, accentPicker, counterColorPicker].forEach(el => {
   el.addEventListener('input', () => {
-    // Live preview
     if (el === fontSelect) document.documentElement.style.setProperty('--font-family', el.value);
     if (el === fontColorPicker) document.documentElement.style.setProperty('--text-primary', el.value);
     if (el === accentPicker) document.documentElement.style.setProperty('--accent-color', el.value);
@@ -333,6 +321,41 @@ sizeSlider.addEventListener('input', () => sizeValue.textContent = sizeSlider.va
 });
 sizeSlider.addEventListener('change', saveCurrentCustomization);
 emojiInput.addEventListener('change', saveCurrentCustomization);
+
+// =============================================
+// DRAGGABLE SETTINGS PANEL
+// =============================================
+const settingsHeader = document.getElementById('settings-header');
+let isDragging = false;
+let offsetX, offsetY;
+
+settingsHeader.addEventListener('mousedown', (e) => {
+  isDragging = true;
+  const rect = settingsPanel.getBoundingClientRect();
+  offsetX = e.clientX - rect.left;
+  offsetY = e.clientY - rect.top;
+  settingsPanel.style.transition = 'none';
+  settingsPanel.style.transform = 'none';
+  settingsPanel.style.left = rect.left + 'px';
+  settingsPanel.style.top = rect.top + 'px';
+  e.preventDefault();
+});
+
+document.addEventListener('mousemove', (e) => {
+  if (!isDragging) return;
+  let left = e.clientX - offsetX;
+  let top = e.clientY - offsetY;
+  // keep within viewport
+  left = Math.max(0, Math.min(left, window.innerWidth - settingsPanel.offsetWidth));
+  top = Math.max(0, Math.min(top, window.innerHeight - settingsPanel.offsetHeight));
+  settingsPanel.style.left = left + 'px';
+  settingsPanel.style.top = top + 'px';
+});
+
+document.addEventListener('mouseup', () => {
+  isDragging = false;
+  settingsPanel.style.transition = '';
+});
 
 // =============================================
 // INIT
