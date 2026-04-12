@@ -11,6 +11,8 @@ let pendingInterruption = false;
 let partialMode = null;
 let partialElapsedLogged = false;
 let currentSessionStart = null;
+let pendingPartialAction = null;
+let pendingPartialElapsed = 0;
 
 let sharedAudioCtx = null;
 
@@ -59,82 +61,86 @@ const workQuotes = [
 let statsChart = null;
 let currentChartTab = 'daily';
 
-// DOM Elements (ensure they exist in your HTML)
-const timerCanvas = document.getElementById('timer-canvas');
+// DOM Elements (with existence checks)
+function $(id) { return document.getElementById(id); }
+
+const timerCanvas = $('timer-canvas');
 const ctx = timerCanvas?.getContext('2d');
-const minutesSpan = document.getElementById('timer-minutes');
-const secondsSpan = document.getElementById('timer-seconds');
-const sessionTypeLabel = document.getElementById('session-type-label');
-const sessionCounterSpan = document.getElementById('session-counter');
-const startPauseBtn = document.getElementById('timer-start-pause');
-const resetBtn = document.getElementById('timer-reset');
-const skipBtn = document.getElementById('timer-skip');
-const autoStartCheck = document.getElementById('auto-start-checkbox');
-const todayPomodorosSpan = document.getElementById('today-pomodoros');
-const halfPomodorosSpan = document.getElementById('half-pomodoros');
-const streakDaysSpan = document.getElementById('streak-days');
-const quoteText = document.getElementById('quote-text');
+const minutesSpan = $('timer-minutes');
+const secondsSpan = $('timer-seconds');
+const sessionTypeLabel = $('session-type-label');
+const sessionCounterSpan = $('session-counter');
+const startPauseBtn = $('timer-start-pause');
+const resetBtn = $('timer-reset');
+const skipBtn = $('timer-skip');
+const autoStartCheck = $('auto-start-checkbox');
+const todayPomodorosSpan = $('today-pomodoros');
+const halfPomodorosSpan = $('half-pomodoros');
+const streakDaysSpan = $('streak-days');
+const quoteText = $('quote-text');
 
-const tasksListDiv = document.getElementById('tasks-list');
-const completedTasksDiv = document.getElementById('completed-tasks-list');
-const addTaskBtn = document.getElementById('add-task-btn');
-const tasksCompletedSpan = document.getElementById('tasks-completed-count');
-const toggleCompletedBtn = document.getElementById('toggle-completed-btn');
+const tasksListDiv = $('tasks-list');
+const completedTasksDiv = $('completed-tasks-list');
+const addTaskBtn = $('add-task-btn');
+const tasksCompletedSpan = $('tasks-completed-count');
+const toggleCompletedBtn = $('toggle-completed-btn');
 
-const settingsModal = document.getElementById('settings-modal');
-const taskModal = document.getElementById('task-modal');
-const interruptModal = document.getElementById('interrupt-modal');
-const breakOverlay = document.getElementById('break-overlay');
-const workOverlay = document.getElementById('work-overlay');
-const sessionDetailModal = document.getElementById('session-detail-modal');
-const sessionDetailBody = document.getElementById('session-detail-body');
-const partialOptionsModal = document.getElementById('partial-options-modal');
-const partialTimeLeftSpan = document.getElementById('partial-time-left');
-const partialResetOption = document.getElementById('partial-reset-option');
-const partialCompleteOption = document.getElementById('partial-complete-option');
+const settingsModal = $('settings-modal');
+const taskModal = $('task-modal');
+const interruptModal = $('interrupt-modal');
+const breakOverlay = $('break-overlay');
+const workOverlay = $('work-overlay');
+const sessionDetailModal = $('session-detail-modal');
+const sessionDetailBody = $('session-detail-body');
+const partialOptionsModal = $('partial-options-modal');
+const partialTimeLeftSpan = $('partial-time-left');
+const partialResetOption = $('partial-reset-option');
+const partialCompleteOption = $('partial-complete-option');
+const partialTaskModal = $('partial-task-modal');
 
-const setWork = document.getElementById('set-work');
-const setShort = document.getElementById('set-short');
-const setLong = document.getElementById('set-long');
-const setIntervalInput = document.getElementById('set-interval');
-const setAccent = document.getElementById('set-accent');
-const colorBar = document.getElementById('color-bar');
-const setSound = document.getElementById('set-sound');
-const setVoice = document.getElementById('set-voice');
-const setDesktopNotify = document.getElementById('set-desktop-notify');
-const setFullscreenBreak = document.getElementById('set-fullscreen-break');
-const setFullscreenWork = document.getElementById('set-fullscreen-work');
-const setLogSkipped = document.getElementById('set-log-skipped');
-const setTickingSound = document.getElementById('set-ticking-sound');
-const setTaskCompleteSound = document.getElementById('set-task-complete-sound');
-const saveSettingsBtn = document.getElementById('save-settings-btn');
+// Settings inputs
+const setWork = $('set-work');
+const setShort = $('set-short');
+const setLong = $('set-long');
+const setIntervalInput = $('set-interval');
+const setAccent = $('set-accent');
+const colorBar = $('color-bar');
+const setSound = $('set-sound');
+const setVoice = $('set-voice');
+const setDesktopNotify = $('set-desktop-notify');
+const setFullscreenBreak = $('set-fullscreen-break');
+const setFullscreenWork = $('set-fullscreen-work');
+const setLogSkipped = $('set-log-skipped');
+const setTickingSound = $('set-ticking-sound');
+const setTaskCompleteSound = $('set-task-complete-sound');
+const saveSettingsBtn = $('save-settings-btn');
 
-const workValue = document.getElementById('work-value');
-const shortValue = document.getElementById('short-value');
-const longValue = document.getElementById('long-value');
-const intervalValue = document.getElementById('interval-value');
-const editEstimateValue = document.getElementById('edit-estimate-value');
+const workValue = $('work-value');
+const shortValue = $('short-value');
+const longValue = $('long-value');
+const intervalValue = $('interval-value');
+const editEstimateValue = $('edit-estimate-value');
 
-const editTaskId = document.getElementById('edit-task-id');
-const editTaskTitle = document.getElementById('edit-task-title');
-const editTaskEstimate = document.getElementById('edit-task-estimate');
-const editTaskNotes = document.getElementById('edit-task-notes');
-const saveTaskBtn = document.getElementById('save-task-btn');
+const editTaskId = $('edit-task-id');
+const editTaskTitle = $('edit-task-title');
+const editTaskEstimate = $('edit-task-estimate');
+const editTaskNotes = $('edit-task-notes');
+const saveTaskBtn = $('save-task-btn');
 
-const interruptReason = document.getElementById('interrupt-reason');
-const saveInterruptBtn = document.getElementById('save-interrupt-btn');
+const interruptReason = $('interrupt-reason');
+const saveInterruptBtn = $('save-interrupt-btn');
 
 const tabBtns = document.querySelectorAll('.tab-btn');
-const historyPanel = document.getElementById('history-log-panel');
+const historyPanel = $('history-log-panel');
 const chartContainer = document.querySelector('.chart-container');
-const historyListDiv = document.getElementById('history-list');
-const exportDataBtn = document.getElementById('export-data-btn');
-const focusToggle = document.getElementById('focus-mode-toggle');
-const exitFocusBtn = document.getElementById('exit-focus-mode');
-const themeToggle = document.getElementById('theme-toggle');
+const historyListDiv = $('history-list');
+const exportDataBtn = $('export-data-btn');
+const focusToggle = $('focus-mode-toggle');
+const exitFocusBtn = $('exit-focus-mode');
+const themeToggle = $('theme-toggle');
 
-const logPartialContainer = document.getElementById('log-partial-container');
-const logPartialBtn = document.getElementById('log-partial-btn');
+const logPartialContainer = $('log-partial-container');
+const logPartialBtn = $('log-partial-btn');
 
 // ======================== HELPER ========================
 function escapeHtml(text) {
@@ -143,7 +149,7 @@ function escapeHtml(text) {
   })[c]);
 }
 
-// ======================== THEME ========================
+// ======================== THEME (dark default) ========================
 function initTheme() {
   const savedTheme = localStorage.getItem('pomodoro_theme') || 'dark';
   document.body.classList.toggle('light-mode', savedTheme === 'light');
@@ -291,7 +297,6 @@ function startTimer() {
   if (!currentSessionStart) currentSessionStart = Date.now();
 
   if (timerInterval) clearInterval(timerInterval);
-  // Use window.setInterval explicitly to avoid shadowing
   timerInterval = window.setInterval(timerTick, 1000);
 
   function animate() {
@@ -369,8 +374,39 @@ function showPartialOptions() {
   partialOptionsModal.style.display = 'flex';
 }
 
+function promptPartialTaskApplication(action, elapsed) {
+  pendingPartialAction = action;
+  pendingPartialElapsed = elapsed;
+  if (partialTaskModal) partialTaskModal.style.display = 'flex';
+}
+
+function applyPartialToTask(option) {
+  const activeTask = activeTaskId ? tasks.find(t => t.id === activeTaskId) : null;
+  if (activeTask && !activeTask.completed) {
+    if (option === 'half') {
+      activeTask.completedPomodoros = Math.min(activeTask.completedPomodoros + 0.5, activeTask.estimatedPomodoros);
+    } else if (option === 'full') {
+      activeTask.completedPomodoros = Math.min(activeTask.completedPomodoros + 1, activeTask.estimatedPomodoros);
+    }
+    if (activeTask.completedPomodoros >= activeTask.estimatedPomodoros) {
+      activeTask.completed = true;
+      if (settings.taskCompleteSound) playTaskCompleteSound();
+      if (activeTaskId === activeTask.id) activeTaskId = null;
+    }
+  }
+  saveToStorage();
+  renderTasks();
+  if (partialTaskModal) partialTaskModal.style.display = 'none';
+  
+  if (pendingPartialAction === 'reset') {
+    logPartialSessionAndReset();
+  } else if (pendingPartialAction === 'complete') {
+    setupPartialCompleteMode();
+  }
+}
+
 function logElapsedPortion() {
-  const elapsed = totalSessionTime - timeLeft;
+  const elapsed = pendingPartialElapsed || (totalSessionTime - timeLeft);
   if (elapsed <= 0) return;
   const activeTask = activeTaskId ? tasks.find(t => t.id === activeTaskId) : null;
   const session = {
@@ -385,7 +421,6 @@ function logElapsedPortion() {
   sessionsHistory.push(session);
   if (currentSessionType === 'work') halfPomodoros++;
   saveToStorage();
-  renderTasks();
   renderHistoryList();
   updateQuickStats();
 }
@@ -402,6 +437,7 @@ function logPartialSessionAndReset() {
   currentSessionStart = null;
   partialMode = null;
   partialElapsedLogged = false;
+  pendingPartialAction = null;
 }
 
 function setupPartialCompleteMode() {
@@ -410,6 +446,7 @@ function setupPartialCompleteMode() {
   partialMode = 'complete';
   if (partialOptionsModal) partialOptionsModal.style.display = 'none';
   startTimer();
+  pendingPartialAction = null;
 }
 
 function completeSession(isSkipped = false) {
@@ -568,7 +605,14 @@ function renderTasks() {
 function renderTaskItem(task, container, isCompleted = false) {
   const taskEl = document.createElement('div');
   taskEl.className = `task-item ${activeTaskId === task.id ? 'active' : ''} ${isCompleted ? 'completed' : ''}`;
-  const dotsHtml = Array.from({ length: task.estimatedPomodoros }, (_, i) => `<span class="pomodoro-dot ${i < task.completedPomodoros ? 'completed' : ''}"></span>`).join('');
+  const completedValue = task.completedPomodoros;
+  const fullDots = Math.floor(completedValue);
+  const hasHalf = (completedValue % 1) >= 0.5;
+  const dotsHtml = Array.from({ length: task.estimatedPomodoros }, (_, i) => {
+    if (i < fullDots) return '<span class="pomodoro-dot completed"></span>';
+    if (i === fullDots && hasHalf) return '<span class="pomodoro-dot half"></span>';
+    return '<span class="pomodoro-dot"></span>';
+  }).join('');
   taskEl.innerHTML = `
     <div class="task-header">
       <input type="checkbox" class="task-checkbox" ${task.completed ? 'checked' : ''}>
@@ -668,11 +712,14 @@ function getChartData(tab) {
       days.push(d.toLocaleDateString('en-US', { weekday: 'short' }));
       fullCounts.push(fullSessions.filter(s => s.timestamp.startsWith(dateStr)).length);
       halfCounts.push(halfSessions.filter(s => s.timestamp.startsWith(dateStr)).length);
-      taskCounts.push(tasks.filter(t => t.completed && t.createdAt && t.createdAt.startsWith(dateStr)).length);
+      // Completed tasks: count unique task names from work sessions on that day
+      const daySessions = sessionsHistory.filter(s => s.type === 'work' && s.timestamp.startsWith(dateStr) && s.taskName);
+      const uniqueTasks = new Set(daySessions.map(s => s.taskName));
+      taskCounts.push(uniqueTasks.size);
     }
     return { labels: days, datasets: [
-      { label: 'Full 🍅', data: fullCounts, backgroundColor: settings.accentColor },
-      { label: 'Half 🍅', data: halfCounts, backgroundColor: '#ffaa33' },
+      { label: 'Full 🍅', data: fullCounts, backgroundColor: '#8B0000' },
+      { label: 'Half 🍅', data: halfCounts, backgroundColor: '#ff9999' },
       { label: 'Tasks', data: taskCounts, backgroundColor: '#4caf50' }
     ]};
   } else if (tab === 'weekly') {
@@ -683,11 +730,13 @@ function getChartData(tab) {
       weeks.push(`W${4-i}`);
       fullCounts.push(fullSessions.filter(s => { const d = new Date(s.timestamp); return d >= start && d <= end; }).length);
       halfCounts.push(halfSessions.filter(s => { const d = new Date(s.timestamp); return d >= start && d <= end; }).length);
-      taskCounts.push(tasks.filter(t => t.completed && t.createdAt && new Date(t.createdAt) >= start && new Date(t.createdAt) <= end).length);
+      const weekSessions = sessionsHistory.filter(s => s.type === 'work' && s.taskName && (() => { const d = new Date(s.timestamp); return d >= start && d <= end; })());
+      const uniqueTasks = new Set(weekSessions.map(s => s.taskName));
+      taskCounts.push(uniqueTasks.size);
     }
     return { labels: weeks, datasets: [
-      { label: 'Full 🍅', data: fullCounts, backgroundColor: settings.accentColor },
-      { label: 'Half 🍅', data: halfCounts, backgroundColor: '#ffaa33' },
+      { label: 'Full 🍅', data: fullCounts, backgroundColor: '#8B0000' },
+      { label: 'Half 🍅', data: halfCounts, backgroundColor: '#ff9999' },
       { label: 'Tasks', data: taskCounts, backgroundColor: '#4caf50' }
     ]};
   } else if (tab === 'monthly') {
@@ -698,11 +747,13 @@ function getChartData(tab) {
       months.push(d.toLocaleDateString('en-US', { month: 'short' }));
       fullCounts.push(fullSessions.filter(s => s.timestamp.startsWith(monthStr)).length);
       halfCounts.push(halfSessions.filter(s => s.timestamp.startsWith(monthStr)).length);
-      taskCounts.push(tasks.filter(t => t.completed && t.createdAt && t.createdAt.startsWith(monthStr)).length);
+      const monthSessions = sessionsHistory.filter(s => s.type === 'work' && s.taskName && s.timestamp.startsWith(monthStr));
+      const uniqueTasks = new Set(monthSessions.map(s => s.taskName));
+      taskCounts.push(uniqueTasks.size);
     }
     return { labels: months, datasets: [
-      { label: 'Full 🍅', data: fullCounts, backgroundColor: settings.accentColor },
-      { label: 'Half 🍅', data: halfCounts, backgroundColor: '#ffaa33' },
+      { label: 'Full 🍅', data: fullCounts, backgroundColor: '#8B0000' },
+      { label: 'Half 🍅', data: halfCounts, backgroundColor: '#ff9999' },
       { label: 'Tasks', data: taskCounts, backgroundColor: '#4caf50' }
     ]};
   } else if (tab === 'tasks') {
@@ -713,16 +764,21 @@ function getChartData(tab) {
 }
 
 function updateChart(tab) {
-  if (!statsChart && document.getElementById('stats-chart')) {
-    const ctxChart = document.getElementById('stats-chart').getContext('2d');
-    statsChart = new Chart(ctxChart, { type: 'bar', data: { labels: [], datasets: [] } });
-  }
-  if (!statsChart) return;
   currentChartTab = tab;
+  const ctxChart = document.getElementById('stats-chart')?.getContext('2d');
+  if (!ctxChart) return;
+  if (statsChart) statsChart.destroy();
   const chartData = getChartData(tab);
-  statsChart.data = { labels: chartData.labels, datasets: chartData.datasets };
-  statsChart.options.plugins.legend.display = (tab !== 'tasks');
-  statsChart.update();
+  statsChart = new Chart(ctxChart, {
+    type: 'bar',
+    data: { labels: chartData.labels, datasets: chartData.datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: tab !== 'tasks' } },
+      scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+    }
+  });
 }
 
 function renderHistoryList() {
@@ -775,7 +831,7 @@ function init() {
   if (resetBtn) resetBtn.addEventListener('click', resetTimer);
   if (skipBtn) skipBtn.addEventListener('click', skipSession);
   if (autoStartCheck) autoStartCheck.addEventListener('change', e => { settings.autoStart = e.target.checked; saveToStorage(); });
-  if (document.getElementById('settings-toggle')) document.getElementById('settings-toggle').addEventListener('click', () => { if (settingsModal) settingsModal.style.display = 'flex'; });
+  if ($('settings-toggle')) $('settings-toggle').addEventListener('click', () => { if (settingsModal) settingsModal.style.display = 'flex'; });
 
   if (setWork) setWork.addEventListener('input', () => { if (workValue) workValue.textContent = setWork.value; });
   if (setShort) setShort.addEventListener('input', () => { if (shortValue) shortValue.textContent = setShort.value; });
@@ -817,13 +873,14 @@ function init() {
     if (interruptModal) interruptModal.style.display = 'none';
     if (sessionDetailModal) sessionDetailModal.style.display = 'none';
     if (partialOptionsModal) partialOptionsModal.style.display = 'none';
+    if (partialTaskModal) partialTaskModal.style.display = 'none';
   }));
   window.addEventListener('click', e => { if (e.target.classList.contains('modal')) e.target.style.display = 'none'; });
 
   if (addTaskBtn) addTaskBtn.addEventListener('click', () => openTaskModal(null));
   if (saveTaskBtn) saveTaskBtn.addEventListener('click', saveTask);
 
-  document.getElementById('log-interruption-btn')?.addEventListener('click', () => { if (interruptModal) interruptModal.style.display = 'flex'; });
+  $('log-interruption-btn')?.addEventListener('click', () => { if (interruptModal) interruptModal.style.display = 'flex'; });
   if (saveInterruptBtn) saveInterruptBtn.addEventListener('click', () => {
     const reason = interruptReason?.value.trim();
     if (reason) {
@@ -849,11 +906,21 @@ function init() {
   };
 
   if (logPartialBtn) logPartialBtn.addEventListener('click', showPartialOptions);
-  if (partialResetOption) partialResetOption.addEventListener('click', logPartialSessionAndReset);
-  if (partialCompleteOption) partialCompleteOption.addEventListener('click', setupPartialCompleteMode);
+  if (partialResetOption) partialResetOption.addEventListener('click', () => {
+    const elapsed = totalSessionTime - timeLeft;
+    promptPartialTaskApplication('reset', elapsed);
+  });
+  if (partialCompleteOption) partialCompleteOption.addEventListener('click', () => {
+    const elapsed = totalSessionTime - timeLeft;
+    promptPartialTaskApplication('complete', elapsed);
+  });
 
-  document.getElementById('close-break-overlay')?.addEventListener('click', () => { if (breakOverlay) breakOverlay.style.display = 'none'; });
-  document.getElementById('close-work-overlay')?.addEventListener('click', () => { if (workOverlay) workOverlay.style.display = 'none'; });
+  $('partial-half-btn')?.addEventListener('click', () => applyPartialToTask('half'));
+  $('partial-full-btn')?.addEventListener('click', () => applyPartialToTask('full'));
+  $('partial-none-btn')?.addEventListener('click', () => applyPartialToTask('none'));
+
+  $('close-break-overlay')?.addEventListener('click', () => { if (breakOverlay) breakOverlay.style.display = 'none'; });
+  $('close-work-overlay')?.addEventListener('click', () => { if (workOverlay) workOverlay.style.display = 'none'; });
 
   tabBtns.forEach(btn => btn.addEventListener('click', () => {
     tabBtns.forEach(b => b.classList.remove('active'));
