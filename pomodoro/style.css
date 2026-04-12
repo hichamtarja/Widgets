@@ -508,6 +508,24 @@ body {
 /* Focus mode hides tasks & stats */
 body.focus-mode .tasks-section,
 body.focus-mode .stats-section,
+
+/* Accent color swatch */
+.color-swatch {
+  display: inline-block;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background-color: var(--accent);
+  margin-left: 10px;
+  border: 2px solid white;
+  vertical-align: middle;
+}
+
+/* Active task highlight */
+.task-item.active {
+  border-left: 4px solid var(--accent);
+  background: rgba(255, 106, 0, 0.1);
+}
 body.focus-mode .quick-stats .stat-item:not(:first-child) {
   display: none;
 }
