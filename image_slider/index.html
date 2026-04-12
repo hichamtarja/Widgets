@@ -2,23 +2,33 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Image Slider</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <div class="slider" id="slider">
+    <!-- Slides container -->
+    <div class="slides">
+      <img src="images/identify.gif" class="slide active" alt="Identify">
+      <img src="images/respond.gif" class="slide" alt="Respond">
+      <img src="images/protect.gif" class="slide" alt="Protect">
+      <img src="images/recover.gif" class="slide" alt="Recover">
+    </div>
 
-<div class="slider">
-  <div class="slides">
-    <img src="images/identify.gif" class="slide active">
-    <img src="images/respond.gif" class="slide">
-    <img src="images/protect.gif" class="slide">
-    <img src="images/recover.gif" class="slide">
-</div>
+    <!-- Navigation buttons -->
+    <button class="nav-btn prev" aria-label="Previous slide">‹</button>
+    <button class="nav-btn next" aria-label="Next slide">›</button>
 
-  <button class="prev">&#10094;</button>
-  <button class="next">&#10095;</button>
-</div>
+    <!-- Slide counter -->
+    <div class="slider-counter">
+      <span id="current-slide">1</span> / <span id="total-slides">4</span>
+    </div>
 
-<script src="script.js"></script>
+    <!-- Dot indicators -->
+    <div class="dots-container" id="dots-container"></div>
+  </div>
+
+  <script src="script.js"></script>
 </body>
 </html>
