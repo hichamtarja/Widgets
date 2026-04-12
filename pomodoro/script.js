@@ -13,7 +13,7 @@ let partialElapsedLogged = false;
 let currentSessionStart = null;
 let pendingPartialAction = null;
 let pendingPartialElapsed = 0;
-let partialRemainingTime = 0; // store remaining time for "Complete Timer" flow
+let partialRemainingTime = 0;
 
 // Extra time tracking
 let extraTimeSeconds = 0;
@@ -520,13 +520,13 @@ function logPartialSessionAndReset() {
 
 function setupPartialCompleteMode() {
   const elapsed = totalSessionTime - timeLeft;
-  partialRemainingTime = timeLeft; // store remaining seconds
+  partialRemainingTime = timeLeft;
   promptPartialTaskApplication('complete', elapsed, (option) => {
     logElapsedPortion(elapsed, true);
     partialElapsedLogged = true;
     partialMode = 'complete';
     if (partialOptionsModal) partialOptionsModal.style.display = 'none';
-    startTimer(); // resume countdown for the remaining time
+    startTimer();
   });
 }
 
@@ -552,7 +552,7 @@ function completeSession(isSkipped = false) {
   let isHalf = false;
   if (partialMode === 'complete' && partialElapsedLogged) {
     isHalf = true;
-    const remaining = partialRemainingTime; // use stored remaining time
+    const remaining = partialRemainingTime;
     if (remaining > 0) {
       const remainingSession = {
         id: Date.now().toString(),
@@ -577,7 +577,7 @@ function completeSession(isSkipped = false) {
         saveToStorage();
         renderHistoryList();
         updateQuickStats();
-        return; // wait for user choice
+        return;
       }
     }
     partialMode = null;
@@ -721,12 +721,259 @@ function playTaskCompleteSound() {
 }
 
 // ======================== TASKS ========================
-// (functions unchanged from previous version)
+function renderTasks() {
+  if (!tasksListDiv || !completedTasksDiv) return;
+  if (activeTaskId) {
+    const activeTask = tasks.find(t => t.id === activeTaskId);
+    if (activeTask && activeTask.completed) activeTaskId = null;
+  }
+  const activeTasks = tasks.filter(t => !t.completed);
+  const completedTasks = tasks.filter(t => t.completed);
+  tasksListDiv.innerHTML = '';
+  activeTasks.forEach(task => renderTaskItem(task, tasksListDiv, false));
+  completedTasksDiv.innerHTML = '';
+  if (showCompleted) completedTasks.forEach(task => renderTaskItem(task, completedTasksDiv, true));
+  const total = tasks.length;
+  const completedCount = tasks.filter(t => t.completed).length;
+  if (tasksCompletedSpan) tasksCompletedSpan.textContent = `${completedCount}/${total} completed`;
+}
+
+function renderTaskItem(task, container, isCompleted = false) {
+  const taskEl = document.createElement('div');
+  taskEl.className = `task-item ${activeTaskId === task.id ? 'active' : ''} ${isCompleted ? 'completed' : ''}`;
+  const completedValue = task.completedPomodoros;
+  const fullDots = Math.floor(completedValue);
+  const hasHalf = (completedValue % 1) >= 0.5;
+  const dotsHtml = Array.from({ length: task.estimatedPomodoros }, (_, i) => {
+    if (i < fullDots) return '<span class="pomodoro-dot completed"></span>';
+    if (i === fullDots && hasHalf) return '<span class="pomodoro-dot half"></span>';
+    return '<span class="pomodoro-dot"></span>';
+  }).join('');
+  taskEl.innerHTML = `
+    <div class="task-header">
+      <input type="checkbox" class="task-checkbox" ${task.completed ? 'checked' : ''}>
+      <div class="task-info">
+        <div class="task-title">${escapeHtml(task.title)}</div>
+        <div class="task-pomodoros">
+          <span>🍅 ${task.completedPomodoros}/${task.estimatedPomodoros}</span>
+          <div class="pomodoro-progress">${dotsHtml}</div>
+        </div>
+        ${task.notes ? `<small>📝 ${escapeHtml(task.notes.substring(0,30))}...</small>` : ''}
+      </div>
+    </div>
+    ${!isCompleted ? '<button class="task-edit-btn" title="Edit task">✎</button>' : ''}
+    <button class="task-delete-btn" title="Delete task">✕</button>
+  `;
+  const deleteBtn = taskEl.querySelector('.task-delete-btn');
+  deleteBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (confirm(`Delete "${task.title}"?`)) {
+      tasks = tasks.filter(t => t.id !== task.id);
+      if (activeTaskId === task.id) activeTaskId = null;
+      saveToStorage();
+      renderTasks();
+    }
+  });
+  const editBtn = taskEl.querySelector('.task-edit-btn');
+  if (editBtn) {
+    editBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openTaskModal(task);
+    });
+  }
+  const checkbox = taskEl.querySelector('.task-checkbox');
+  checkbox.addEventListener('change', (e) => {
+    task.completed = e.target.checked;
+    if (task.completed && activeTaskId === task.id) activeTaskId = null;
+    saveToStorage();
+    renderTasks();
+  });
+  
+  taskEl.addEventListener('click', (e) => {
+    if (e.target.type === 'checkbox' || e.target.classList.contains('task-delete-btn') || e.target.classList.contains('task-edit-btn')) return;
+    if (isCompleted) {
+      showTaskDetail(task);
+    } else {
+      activeTaskId = (activeTaskId === task.id) ? null : task.id;
+      renderTasks();
+      saveToStorage();
+    }
+  });
+  
+  container.appendChild(taskEl);
+}
+
+function openTaskModal(task = null) {
+  if (!taskModal) return;
+  if (task) {
+    if (editTaskId) editTaskId.value = task.id;
+    if (editTaskTitle) editTaskTitle.value = task.title;
+    if (editTaskEstimate) editTaskEstimate.value = task.estimatedPomodoros;
+    if (editEstimateValue) editEstimateValue.textContent = task.estimatedPomodoros;
+    if (editTaskNotes) editTaskNotes.value = task.notes || '';
+    document.getElementById('task-modal-title').textContent = 'Edit Task';
+  } else {
+    if (editTaskId) editTaskId.value = '';
+    if (editTaskTitle) editTaskTitle.value = '';
+    if (editTaskEstimate) editTaskEstimate.value = 1;
+    if (editEstimateValue) editEstimateValue.textContent = 1;
+    if (editTaskNotes) editTaskNotes.value = '';
+    document.getElementById('task-modal-title').textContent = 'New Task';
+  }
+  taskModal.style.display = 'flex';
+}
+
+function showTaskDetail(task) {
+  if (!taskDetailModal || !taskDetailBody) return;
+  let html = `<h3>${escapeHtml(task.title)}</h3>`;
+  html += `<p><strong>Pomodoros:</strong> ${task.completedPomodoros}/${task.estimatedPomodoros}</p>`;
+  if (task.notes) html += `<p><strong>Notes:</strong> ${escapeHtml(task.notes)}</p>`;
+  html += `<p><strong>Created:</strong> ${new Date(task.createdAt).toLocaleString()}</p>`;
+  taskDetailBody.innerHTML = html;
+  taskDetailModal.style.display = 'flex';
+}
+
+function saveTask() {
+  const id = editTaskId?.value;
+  const title = editTaskTitle?.value.trim();
+  if (!title) return alert('Title required');
+  const estimate = parseInt(editTaskEstimate?.value) || 1;
+  const notes = editTaskNotes?.value.trim() || '';
+  if (id) {
+    const task = tasks.find(t => t.id === id);
+    if (task) { task.title = title; task.estimatedPomodoros = estimate; task.notes = notes; }
+  } else {
+    tasks.push({ id: Date.now().toString(), title, estimatedPomodoros: estimate, completedPomodoros: 0, notes, completed: false, createdAt: new Date().toISOString() });
+  }
+  saveToStorage(); renderTasks(); if (taskModal) taskModal.style.display = 'none';
+}
 
 // ======================== STATISTICS ========================
-// (functions unchanged)
+function getChartData(tab) {
+  const fullSessions = sessionsHistory.filter(s => s.type === 'work' && !s.halfPomodoro);
+  const halfSessions = sessionsHistory.filter(s => s.type === 'work' && s.halfPomodoro);
+  const now = new Date();
+  if (tab === 'daily') {
+    const days = [], fullCounts = [], halfCounts = [], taskCounts = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(now); d.setDate(now.getDate() - i);
+      const dateStr = d.toISOString().split('T')[0];
+      days.push(d.toLocaleDateString('en-US', { weekday: 'short' }));
+      fullCounts.push(fullSessions.filter(s => s.timestamp.startsWith(dateStr)).length);
+      halfCounts.push(halfSessions.filter(s => s.timestamp.startsWith(dateStr)).length);
+      const daySessions = sessionsHistory.filter(s => s.type === 'work' && s.timestamp.startsWith(dateStr) && s.taskName);
+      const uniqueTasks = new Set(daySessions.map(s => s.taskName));
+      taskCounts.push(uniqueTasks.size);
+    }
+    return { labels: days, datasets: [
+      { label: 'Full 🍅', data: fullCounts, backgroundColor: '#8B0000' },
+      { label: 'Half 🍅', data: halfCounts, backgroundColor: '#ff9999' },
+      { label: 'Tasks', data: taskCounts, backgroundColor: '#4caf50' }
+    ]};
+  } else if (tab === 'weekly') {
+    const weeks = [], fullCounts = [], halfCounts = [], taskCounts = [];
+    for (let i = 3; i >= 0; i--) {
+      const start = new Date(now); start.setDate(now.getDate() - i*7);
+      const end = new Date(start); end.setDate(start.getDate() + 6);
+      weeks.push(`W${4-i}`);
+      fullCounts.push(fullSessions.filter(s => { const d = new Date(s.timestamp); return d >= start && d <= end; }).length);
+      halfCounts.push(halfSessions.filter(s => { const d = new Date(s.timestamp); return d >= start && d <= end; }).length);
+      const weekSessions = sessionsHistory.filter(s => s.type === 'work' && s.taskName && (() => { const d = new Date(s.timestamp); return d >= start && d <= end; })());
+      const uniqueTasks = new Set(weekSessions.map(s => s.taskName));
+      taskCounts.push(uniqueTasks.size);
+    }
+    return { labels: weeks, datasets: [
+      { label: 'Full 🍅', data: fullCounts, backgroundColor: '#8B0000' },
+      { label: 'Half 🍅', data: halfCounts, backgroundColor: '#ff9999' },
+      { label: 'Tasks', data: taskCounts, backgroundColor: '#4caf50' }
+    ]};
+  } else if (tab === 'monthly') {
+    const months = [], fullCounts = [], halfCounts = [], taskCounts = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now); d.setMonth(now.getMonth() - i);
+      const monthStr = d.toISOString().slice(0,7);
+      months.push(d.toLocaleDateString('en-US', { month: 'short' }));
+      fullCounts.push(fullSessions.filter(s => s.timestamp.startsWith(monthStr)).length);
+      halfCounts.push(halfSessions.filter(s => s.timestamp.startsWith(monthStr)).length);
+      const monthSessions = sessionsHistory.filter(s => s.type === 'work' && s.taskName && s.timestamp.startsWith(monthStr));
+      const uniqueTasks = new Set(monthSessions.map(s => s.taskName));
+      taskCounts.push(uniqueTasks.size);
+    }
+    return { labels: months, datasets: [
+      { label: 'Full 🍅', data: fullCounts, backgroundColor: '#8B0000' },
+      { label: 'Half 🍅', data: halfCounts, backgroundColor: '#ff9999' },
+      { label: 'Tasks', data: taskCounts, backgroundColor: '#4caf50' }
+    ]};
+  } else if (tab === 'tasks') {
+    const completed = tasks.filter(t => t.completed).length;
+    const active = tasks.filter(t => !t.completed).length;
+    return { labels: ['Completed', 'Active'], datasets: [{ data: [completed, active], backgroundColor: ['#4caf50', settings.accentColor] }] };
+  }
+}
 
-// ======================== INIT ========================
+function updateChart(tab) {
+  currentChartTab = tab;
+  const ctxChart = document.getElementById('stats-chart')?.getContext('2d');
+  if (!ctxChart) return;
+  if (statsChart) statsChart.destroy();
+  const chartData = getChartData(tab);
+  statsChart = new Chart(ctxChart, {
+    type: 'bar',
+    data: { labels: chartData.labels, datasets: chartData.datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: tab !== 'tasks' } },
+      scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+    }
+  });
+}
+
+function renderHistoryList() {
+  if (!historyListDiv) return;
+  historyListDiv.innerHTML = sessionsHistory.slice(-30).reverse().map((s, idx) => {
+    const displayType = s.taskName ? s.taskName : s.type;
+    const halfMark = s.halfPomodoro ? ' ½' : '';
+    const partialMark = s.partial ? ' ⏸️' : '';
+    let durationText = `${s.duration} min`;
+    if (s.extraTime) {
+      durationText = `${s.duration} min + ${Math.floor(s.extraTime / 60)} min (Extra)`;
+    }
+    return `<div class="history-item" data-session-index="${idx}">
+      <span>${displayType} · ${durationText}${halfMark}${partialMark}</span>
+      <span>${new Date(s.timestamp).toLocaleString()}</span>
+    </div>`;
+  }).join('');
+}
+
+function showSessionDetail(session) {
+  if (!sessionDetailBody || !sessionDetailModal) return;
+  let html = `<p><strong>Type:</strong> ${session.type}</p>`;
+  let durationText = `${session.duration} min`;
+  if (session.extraTime) {
+    durationText += ` + ${Math.floor(session.extraTime / 60)} min (Extra time)`;
+  }
+  html += `<p><strong>Duration:</strong> ${durationText} ${session.halfPomodoro ? '(½ Pomodoro)' : ''}</p>`;
+  html += `<p><strong>Time:</strong> ${new Date(session.timestamp).toLocaleString()}</p>`;
+  if (session.taskName) html += `<p><strong>Task:</strong> ${escapeHtml(session.taskName)}</p>`;
+  if (session.interruptions?.length) {
+    html += `<p><strong>Interruptions:</strong></p><ul>`;
+    session.interruptions.forEach(i => html += `<li>${escapeHtml(i.reason)} (${new Date(i.time).toLocaleTimeString()})</li>`);
+    html += `</ul>`;
+  } else {
+    html += `<p>No interruptions recorded.</p>`;
+  }
+  sessionDetailBody.innerHTML = html;
+  sessionDetailModal.style.display = 'flex';
+}
+
+function updateQuickStats() {
+  if (todayPomodorosSpan) todayPomodorosSpan.textContent = todayPomodoros;
+  if (halfPomodorosSpan) halfPomodorosSpan.textContent = halfPomodoros;
+  if (streakDaysSpan) streakDaysSpan.textContent = streakDays;
+}
+
+// ======================== EVENT LISTENERS & INIT ========================
 function init() {
   initTheme();
   loadFromStorage();
@@ -736,7 +983,6 @@ function init() {
   updateChart('daily');
   renderHistoryList();
 
-  // Modal pause/resume extra time
   const modals = [settingsModal, taskModal, taskDetailModal, interruptModal, sessionDetailModal, partialOptionsModal, partialTaskModal];
   modals.forEach(m => {
     if (m) {
