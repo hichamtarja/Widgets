@@ -282,6 +282,24 @@
     </div>
   </div>
 
+  <!-- Partial Session Options Modal -->
+  <div id="partial-options-modal" class="modal">
+    <div class="modal-content glass">
+      <div class="modal-header">
+        <h2>Log Partial Session</h2>
+        <button class="close-modal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p>You paused with <span id="partial-time-left"></span> remaining.</p>
+        <p>How would you like to proceed?</p>
+        <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 20px;">
+          <button id="partial-reset-option" class="secondary-btn">Reset Timer (log elapsed)</button>
+          <button id="partial-complete-option" class="primary-btn">Complete Timer (log remaining later)</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script src="script.js"></script>
 </body>
 </html>
