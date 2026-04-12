@@ -74,7 +74,8 @@ textarea {
 
 /* ===== BUTTONS ===== */
 button {
-  padding: 12px 24px;
+  padding: 10px 20px;
+  margin-top: 10px;
   border: none;
   border-radius: 35px;
   cursor: pointer;
@@ -343,15 +344,6 @@ button:hover {
   color: #ddd;
   cursor: pointer;
 }
-#display-quote::before {
-  content: "“";
-  font-size: 3.5rem;
-  position: absolute;
-  left: 10px;
-  top: -8px;
-  opacity: 0.25;
-  color: var(--accent, #ff6a00);
-}
 
 /* ===== MILESTONE VIEW (ENHANCED) ===== */
 #milestone-view {
@@ -361,7 +353,7 @@ button:hover {
   border-radius: 30px;
   background: rgba(20, 20, 20, 0.8);
   backdrop-filter: blur(12px);
-  border: 1px solid var(--accent, #ff6a00);
+  border: 0px solid var(--accent, #ff6a00);
   box-shadow: 0 0 25px rgba(0,0,0,0.5);
   text-align: center;
   cursor: pointer;
